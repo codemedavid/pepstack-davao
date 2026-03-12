@@ -265,15 +265,11 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
             if (orderError) {
                 console.error('❌ Error saving order:', orderError);
+                console.error('Error code:', orderError.code);
+                console.error('Error details:', orderError.details);
+                console.error('Error hint:', orderError.hint);
 
-                let errorMessage = orderError.message;
-                if (orderError.message?.includes('Could not find the table') ||
-                    orderError.message?.includes('relation "public.orders" does not exist') ||
-                    orderError.message?.includes('schema cache')) {
-                    errorMessage = `The orders table doesn't exist in the database. Please run the migration.`;
-                }
-
-                alert(`Failed to save order: ${errorMessage}\n\nPlease contact support if this issue persists.`);
+                alert(`Failed to save order: ${orderError.message}\n\nError code: ${orderError.code || 'N/A'}\n\nPlease contact support if this issue persists.`);
                 return;
             }
 
@@ -307,7 +303,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
             });
 
             const orderDetails = `
-✨ BIORICH - NEW ORDER
+✨ Peptijene - NEW ORDER
 
 📅 ORDER DATE & TIME
 ${dateTimeStamp}
@@ -358,7 +354,7 @@ ${paymentMethod?.name || 'N/A'}
 ${paymentProofUrl ? 'Screenshot attached to order.' : 'Pending'}
 
 📱 CONTACT METHOD
-WhatsApp (+63 927 487 6549)
+Facebook Messenger
 
 📋 ORDER NUMBER: ${customOrderNumber}
 
@@ -378,10 +374,9 @@ Please confirm this order. Thank you!
             // Show confirmation
             setStep('confirmation');
 
-            // Auto-open WhatsApp with pre-filled order details
+            // Auto-open Facebook Messenger
             setTimeout(() => {
-                const whatsappUrl = `https://wa.me/639274876549?text=${encodeURIComponent(orderDetails)}`;
-                window.open(whatsappUrl, '_blank');
+                window.open('https://www.facebook.com/share/1CJZ5FTx2N/?mibextid=wwXIfr', '_blank');
             }, 1500);
         } catch (error) {
             console.error('❌ Error placing order:', error);
@@ -402,8 +397,7 @@ Please confirm this order. Thank you!
     };
 
     const handleOpenContact = () => {
-        const contactUrl = `https://wa.me/639274876549?text=${encodeURIComponent(orderMessage)}`;
-        window.open(contactUrl, '_blank');
+        window.open('https://www.facebook.com/share/1CJZ5FTx2N/?mibextid=wwXIfr', '_blank');
     };
 
     if (step === 'confirmation') {
@@ -418,7 +412,7 @@ Please confirm this order. Thank you!
                             Order Confirmed
                         </h1>
                         <p className="text-gray-600 mb-4 text-base md:text-lg leading-relaxed">
-                            Your order details have been pre-filled on WhatsApp. Just hit send to finalize your order!
+                            Your order details have been copied. Send them to us on Facebook Messenger to finalize your order!
                         </p>
 
                         {/* Order ID Display */}
@@ -476,11 +470,11 @@ Please confirm this order. Thank you!
                                 className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 shadow-lg"
                             >
                                 <MessageCircle className="w-5 h-5" />
-                                Open WhatsApp & Send
+                                Open Facebook Messenger
                             </button>
 
                             <p className="text-sm text-gray-500">
-                                If WhatsApp doesn't open automatically, please send the copied message to <span className="font-bold">+63 927 487 6549 on WhatsApp</span>
+                                If Facebook doesn't open automatically, please send the copied order details to our <span className="font-bold">Peptijene Facebook page</span>
                             </p>
                         </div>
 
@@ -865,52 +859,24 @@ Please confirm this order. Thank you!
                             </div>
                         </div>
 
-                        {/* Contact Method Selection */}
+                        {/* Contact Method */}
                         <div className="bg-white rounded shadow-clinical p-6 border border-gray-100">
                             <h2 className="font-heading text-lg font-bold text-charcoal-900 mb-3 flex items-center gap-2">
                                 <MessageCircle className="w-5 h-5 text-brand-600" />
-                                Contact Method *
+                                Contact Method
                             </h2>
                             <p className="text-xs text-gray-500 mb-4">
-                                Choose how you'd like to send your order details after checkout.
+                                Your order will be sent via Facebook Messenger after checkout.
                             </p>
-                            {/* Viber */}
-                            <button
-                                type="button"
-                                onClick={() => setContactMethod('viber')}
-                                className={`p-4 rounded border transition-all flex items-center gap-3 ${contactMethod === 'viber'
-                                    ? 'border-brand-600 bg-brand-50 ring-1 ring-brand-600'
-                                    : 'border-gray-200 hover:border-brand-300'
-                                    }`}
-                            >
-                                <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M21.624 19.344C20.618 20.35 18.257 21.018 17.653 21.119C16.921 21.238 16.331 21.229 15.776 21.161C14.075 20.957 11.836 20.065 9.421 17.652C7.008 15.236 6.115 12.997 5.912 11.296C5.844 10.741 5.834 10.151 5.953 9.419C6.054 8.815 6.722 6.453 7.728 5.447C8.016 5.16 8.441 5.152 8.74 5.433C9.098 5.769 9.873 6.643 10.233 7.072C10.518 7.411 10.518 7.904 10.247 8.249C9.972 8.6 9.497 9.062 9.165 9.387C9.049 9.501 8.981 9.658 9.04 9.813C9.28 10.439 10.057 12.164 11.889 13.996C13.722 15.828 15.447 16.604 16.073 16.844C16.228 16.904 16.386 16.836 16.499 16.719C16.825 16.388 17.286 15.912 17.638 15.637C17.982 15.366 18.475 15.367 18.814 15.652C19.243 16.012 20.117 16.787 20.453 17.145C20.733 17.444 20.726 17.869 20.439 18.156L21.624 19.344Z" />
+                            <div className="p-4 rounded border border-brand-600 bg-brand-50 ring-1 ring-brand-600 flex items-center gap-3">
+                                <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.908 1.434 5.503 3.678 7.2V22l3.455-1.9c.92.256 1.896.393 2.867.393 5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.002 12.457l-2.549-2.72L5.5 14.457l4.95-5.25 2.613 2.72 4.887-2.47-4.948 5z"/>
                                 </svg>
                                 <div className="text-left">
-                                    <p className="font-bold text-charcoal-900 text-sm">Viber</p>
-                                    <p className="text-xs text-gray-500">0949 613 3242</p>
+                                    <p className="font-bold text-charcoal-900 text-sm">Facebook Messenger</p>
+                                    <p className="text-xs text-gray-500">Peptijene Facebook Page</p>
                                 </div>
-                            </button>
-
-                            {/* WhatsApp */}
-                            <button
-                                type="button"
-                                onClick={() => setContactMethod('whatsapp')}
-                                className={`p-4 rounded border transition-all flex items-center gap-3 ${contactMethod === 'whatsapp'
-                                    ? 'border-brand-600 bg-brand-50 ring-1 ring-brand-600'
-                                    : 'border-gray-200 hover:border-brand-300'
-                                    }`}
-                            >
-                                <div className="w-6 h-6 flex items-center justify-center bg-green-500 rounded-full text-white">
-                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-                                    </svg>
-                                </div>
-                                <div className="text-left">
-                                    <p className="font-bold text-charcoal-900 text-sm">WhatsApp</p>
-                                    <p className="text-xs text-gray-500">0949 613 3242</p>
-                                </div>
-                            </button>
+                            </div>
                         </div>
                     </div>
 

@@ -15,16 +15,14 @@ const Header: React.FC<HeaderProps> = ({ cartItemsCount, onCartClick, onMenuClic
       <header className="bg-white/95 backdrop-blur-sm sticky top-0 z-50 border-b border-brand-100">
         <div className="container mx-auto px-4 md:px-6 py-3">
           <div className="flex items-center justify-between gap-4">
-            {/* Logo - Rectangular */}
+            {/* Brand Name */}
             <button
               onClick={() => { onMenuClick(); setMobileMenuOpen(false); }}
               className="flex items-center hover:opacity-90 transition-opacity"
             >
-              <img
-                src="/logo.png"
-                alt="BIORICH"
-                className="h-10 sm:h-12 w-auto object-contain rounded-lg"
-              />
+              <span className="text-2xl sm:text-3xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
+                Peptijene
+              </span>
             </button>
 
             {/* Right Side Navigation */}
@@ -115,11 +113,9 @@ const Header: React.FC<HeaderProps> = ({ cartItemsCount, onCartClick, onMenuClic
             {/* Drawer Header */}
             <div className="flex items-center justify-between p-5 border-b border-brand-100">
               <div className="flex items-center gap-3">
-                <img
-                  src="/logo.png"
-                  alt="BIORICH"
-                  className="h-8 w-auto object-contain rounded-md"
-                />
+                <span className="text-xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
+                  Peptijene
+                </span>
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}

@@ -316,7 +316,7 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
     switch (status) {
       case 'new': return 'bg-yellow-100 text-black border-yellow-400';
       case 'confirmed': return 'bg-blue-100 text-black border-blue-300';
-      case 'processing': return 'bg-purple-100 text-black border-purple-300';
+      case 'processing': return 'bg-pink-100 text-black border-pink-300';
       case 'shipped': return 'bg-indigo-100 text-black border-indigo-300';
       case 'delivered': return 'bg-green-100 text-black border-green-300';
       case 'cancelled': return 'bg-red-100 text-black border-red-300';
@@ -635,7 +635,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({
             <div>
               <span className={`inline-flex items-center px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold border ${order.order_status === 'new' ? 'bg-yellow-100 text-black border-yellow-400' :
                 order.order_status === 'confirmed' ? 'bg-blue-100 text-black border-blue-300' :
-                  order.order_status === 'processing' ? 'bg-purple-100 text-black border-purple-300' :
+                  order.order_status === 'processing' ? 'bg-pink-100 text-black border-pink-300' :
                     order.order_status === 'shipped' ? 'bg-indigo-100 text-black border-indigo-300' :
                       order.order_status === 'delivered' ? 'bg-green-100 text-black border-green-300' :
                         'bg-red-100 text-black border-red-300'

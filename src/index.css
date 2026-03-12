@@ -5,24 +5,24 @@
 @tailwind utilities;
 
 :root {
-  /* BIORICH - Soft Modern Biotech Theme */
+  /* Peptijene - Soft Modern Biotech Theme */
   --theme-bg: #FFFFFF;
   --theme-text: #2B2B2B;
 
-  /* Primary Palette */
+  /* Primary Palette - Pink */
   --primary-pink: #F06292;
   --soft-pink: #F8BBD0;
-  --light-lavender: #C9B6E4;
-  --pastel-lavender: #E6DAF4;
+  --light-pink: #F48FB1;
+  --pastel-pink: #FCE4EC;
   --gold-accent: #C8A46B;
 
   /* Backgrounds */
   --cream: #FFFFFF;
-  --soft-bg: #FAF7FF;
-  --warm-white: #FAF7FF;
+  --soft-bg: #FFF0F3;
+  --warm-white: #FFF0F3;
 
   /* Gradient */
-  --brand-gradient: linear-gradient(135deg, #F8BBD0, #C9B6E4);
+  --brand-gradient: linear-gradient(135deg, #F8BBD0, #F06292);
 }
 
 @layer base {
@@ -42,13 +42,13 @@
 
 @layer components {
 
-  /* BIORICH Button Styles */
+  /* Peptijene Button Styles */
   .btn-primary {
     @apply text-white px-8 py-4 rounded-xl font-semibold text-sm tracking-wide transition-all duration-300 shadow-soft hover:shadow-luxury active:transform active:scale-[0.98];
-    background: linear-gradient(135deg, #F8BBD0, #C9B6E4);
+    background: linear-gradient(135deg, #F8BBD0, #F06292);
   }
   .btn-primary:hover {
-    background: linear-gradient(135deg, #F06292, #B39DDB);
+    background: linear-gradient(135deg, #F06292, #EC407A);
   }
 
   .btn-secondary {

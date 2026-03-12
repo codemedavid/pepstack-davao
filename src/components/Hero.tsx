@@ -23,16 +23,16 @@ const Hero: React.FC<HeroProps> = ({ onShopAll }) => {
         style={{ background: '#F8BBD0', animationDuration: '7s' }}
       />
 
-      {/* Soft lavender blob - bottom right */}
+      {/* Soft pink blob - bottom right */}
       <div
         className="absolute -bottom-32 -right-20 w-[500px] h-[500px] rounded-full opacity-25 blur-3xl animate-pulse"
-        style={{ background: '#C9B6E4', animationDuration: '9s' }}
+        style={{ background: '#F48FB1', animationDuration: '9s' }}
       />
 
-      {/* Pastel lavender circle - top right */}
+      {/* Pastel pink circle - top right */}
       <div
         className="absolute top-16 right-[10%] w-[250px] h-[250px] rounded-full opacity-15 blur-2xl"
-        style={{ background: 'radial-gradient(circle, #E6DAF4, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, #FCE4EC, transparent 70%)' }}
       />
 
       {/* Primary pink circle - bottom left */}
@@ -132,13 +132,11 @@ const Hero: React.FC<HeroProps> = ({ onShopAll }) => {
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}
       `}>
 
-        {/* Logo */}
+        {/* Brand Name */}
         <div className="mb-6">
-          <img
-            src="/logo.png"
-            alt="BIORICH"
-            className="h-24 sm:h-28 md:h-32 w-auto object-contain rounded-2xl shadow-lg"
-          />
+          <span className="text-5xl sm:text-6xl md:text-7xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
+            Peptijene
+          </span>
         </div>
 
         {/* Title */}
@@ -156,7 +154,7 @@ const Hero: React.FC<HeroProps> = ({ onShopAll }) => {
           <button
             onClick={onShopAll}
             className="w-full sm:w-auto px-8 py-4 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group"
-            style={{ background: 'linear-gradient(135deg, #F8BBD0, #C9B6E4)' }}
+            style={{ background: 'linear-gradient(135deg, #F8BBD0, #F06292)' }}
           >
             Explore Products
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

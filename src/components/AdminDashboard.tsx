@@ -480,11 +480,9 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 w-full max-w-md border border-gray-200">
           <div className="text-center mb-6">
             <div className="mx-auto mb-4">
-              <img
-                src="/logo.png"
-                alt="BIORICH"
-                className="h-14 w-auto mx-auto object-contain"
-              />
+              <span className="text-3xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
+                Peptijene
+              </span>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Admin Access</h1>
             <p className="text-sm text-gray-400">
@@ -697,13 +695,13 @@ const AdminDashboard: React.FC = () => {
                   </div>
 
                   {/* Auto-Generate Protocol Checkbox */}
-                  <div className="md:col-span-2 mt-2 bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-200">
+                  <div className="md:col-span-2 mt-2 bg-gradient-to-r from-pink-50 to-pink-50 p-4 rounded-lg border border-pink-200">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={autoGenerateProtocol}
                         onChange={(e) => setAutoGenerateProtocol(e.target.checked)}
-                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                        className="w-5 h-5 text-pink-600 rounded focus:ring-pink-500"
                       />
                       <div>
                         <span className="font-bold text-gray-800 flex items-center gap-2">
@@ -1271,19 +1269,19 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         {/* Bulk Generate Banner */}
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4">
+        <div className="bg-gradient-to-r from-pink-600 to-pink-600 text-white p-4">
           <div className="max-w-4xl mx-auto flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <Sparkles className="w-5 h-5 text-purple-200" />
+              <Sparkles className="w-5 h-5 text-pink-200" />
               <div>
                 <h3 className="font-bold text-white">AI Protocol Assistant</h3>
-                <p className="text-xs text-purple-200">Generate protocols for all {products.length} products</p>
+                <p className="text-xs text-pink-200">Generate protocols for all {products.length} products</p>
               </div>
             </div>
             <button
               onClick={handleBulkGenerateProtocols}
               disabled={isProcessing}
-              className="bg-white text-purple-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-purple-50 transition-colors disabled:opacity-50"
+              className="bg-white text-pink-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-pink-50 transition-colors disabled:opacity-50"
             >
               {isProcessing ? 'Generating...' : '🤖 Bulk Generate All Protocols'}
             </button>
@@ -1379,11 +1377,9 @@ const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-4">
                 <div className="h-10 flex items-center">
-                  <img
-                    src="/logo.png"
-                    alt="BIORICH"
-                    className="h-10 w-auto object-contain"
-                  />
+                  <span className="text-2xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
+                    Peptijene
+                  </span>
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -1467,14 +1463,14 @@ const AdminDashboard: React.FC = () => {
 
             <button
               onClick={() => setCurrentView('categories')}
-              className="group relative overflow-hidden bg-white rounded-2xl p-5 border border-gray-200 hover:border-purple-500 hover:shadow-lg transition-all duration-300 text-left"
+              className="group relative overflow-hidden bg-white rounded-2xl p-5 border border-gray-200 hover:border-pink-500 hover:shadow-lg transition-all duration-300 text-left"
             >
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Users className="w-24 h-24 text-purple-600" />
+                <Users className="w-24 h-24 text-pink-600" />
               </div>
               <div className="relative z-10">
-                <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                  <Users className="h-5 w-5 text-purple-600" />
+                <div className="w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <Users className="h-5 w-5 text-pink-600" />
                 </div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Categories</p>
                 <p className="text-3xl font-bold text-gray-900 tracking-tight">{categories.length}</p>
@@ -1578,11 +1574,11 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => setCurrentView('coa')}
                   className="group flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-200"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <Shield className="h-5 w-5 text-indigo-600" />
+                  <div className="w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <Shield className="h-5 w-5 text-pink-600" />
                   </div>
                   <div>
-                    <span className="block text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">Lab Results</span>
+                    <span className="block text-sm font-semibold text-gray-900 group-hover:text-pink-600 transition-colors">Lab Results</span>
                     <span className="text-xs text-gray-500">Manage COAs</span>
                   </div>
                 </button>
@@ -1639,14 +1635,14 @@ const AdminDashboard: React.FC = () => {
 
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
               <h3 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
-                <div className="w-1 h-6 bg-purple-600 rounded-full"></div>
+                <div className="w-1 h-6 bg-pink-600 rounded-full"></div>
                 Categories
               </h3>
               <div className="space-y-1">
                 {categoryCounts.map((category, index) => {
                   const bgColors = [
                     'bg-blue-100 text-blue-700',
-                    'bg-purple-100 text-purple-700',
+                    'bg-pink-100 text-pink-700',
                     'bg-emerald-100 text-emerald-700',
                     'bg-amber-100 text-amber-700',
                     'bg-rose-100 text-rose-700',

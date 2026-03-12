@@ -13,7 +13,7 @@ const FloatingCartButton: React.FC<FloatingCartButtonProps> = ({ itemCount, onCa
     <button
       onClick={onCartClick}
       className="fixed bottom-4 right-4 md:bottom-6 md:right-6 lg:bottom-8 lg:right-8 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 z-50 p-3 md:p-4 group"
-      style={{ background: 'linear-gradient(135deg, #F8BBD0, #C9B6E4)' }}
+      style={{ background: 'linear-gradient(135deg, #F8BBD0, #F06292)' }}
       aria-label="View cart"
     >
       <div className="relative">

@@ -7,19 +7,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        // BIORICH - Soft Modern Biotech Theme
+        // Peptijene - Soft Modern Biotech Theme
         'theme-bg': '#FFFFFF',           // Pure White
         'theme-text': '#2B2B2B',         // Dark Text
 
-        // Primary Palette - Pink & Lavender
+        // Primary Palette - Pink
         'brand': {
           DEFAULT: '#F06292', // Primary Pink
-          50: '#FAF7FF',      // Soft Background
-          100: '#F3E8F9',
-          200: '#E6DAF4',     // Pastel Lavender
-          300: '#C9B6E4',     // Light Lavender
-          400: '#F8BBD0',     // Soft Pink
-          500: '#F06292',     // Primary Pink
+          50: '#FFF0F3',      // Soft Pink Background
+          100: '#FCE4EC',
+          200: '#F8BBD0',     // Light Pink
+          300: '#F48FB1',     // Medium Pink
+          400: '#F06292',     // Pink
+          500: '#EC407A',     // Primary Pink
           600: '#E91E78',
           700: '#C2185B',     // Deep Pink
           800: '#AD1457',
@@ -29,9 +29,9 @@ export default {
         // Secondary & Neutral
         'charcoal': {
           DEFAULT: '#2B2B2B',
-          50: '#FAF7FF',      // Soft Lavender Tint
-          100: '#F3E8F9',
-          200: '#E6DAF4',
+          50: '#FFF0F3',      // Soft Pink Tint
+          100: '#FCE4EC',
+          200: '#F8BBD0',
           300: '#B0B0B0',
           400: '#858585',
           500: '#595959',
@@ -43,8 +43,8 @@ export default {
 
         // Backgrounds & Accents
         'cream': '#FFFFFF',
-        'blush-light': '#FAF7FF',   // Soft Background
-        'warm-white': '#FAF7FF',
+        'blush-light': '#FFF0F3',   // Soft Pink Background
+        'warm-white': '#FFF0F3',
         'gold': '#C8A46B',          // Gold Accent
       },
       fontFamily: {

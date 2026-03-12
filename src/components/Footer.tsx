@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, FlaskConical, Mail, MapPin, Instagram, HelpCircle, FileText, BookOpen, Tag } from 'lucide-react';
+import { Truck, FlaskConical, Mail, MapPin, Instagram, Facebook, HelpCircle, FileText, BookOpen, Tag } from 'lucide-react';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -11,11 +11,9 @@ const Footer: React.FC = () => {
 
           {/* Brand Section */}
           <div className="flex flex-col items-center md:items-start gap-4">
-            <img
-              src="/logo.png"
-              alt="BIORICH"
-              className="h-14 w-auto object-contain bg-white/10 rounded-lg p-2"
-            />
+            <span className="text-2xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-400 to-brand-200 bg-clip-text text-transparent">
+              Peptijene
+            </span>
             <p className="text-charcoal-400 text-sm max-w-xs text-center md:text-left">
               Advanced peptide solutions designed for innovation and research. Lab-tested, high-purity formulations you can trust.
             </p>
@@ -35,6 +33,15 @@ const Footer: React.FC = () => {
               <MapPin className="w-4 h-4" />
               Marilao, Bulacan
             </div>
+            <a
+              href="https://www.facebook.com/share/1CJZ5FTx2N/?mibextid=wwXIfr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-charcoal-300 hover:text-brand-400 transition-colors flex items-center gap-2 text-sm"
+            >
+              <Facebook className="w-4 h-4" />
+              Peptijene
+            </a>
             <a
               href="https://www.instagram.com/biorichscience"
               target="_blank"
@@ -106,7 +113,7 @@ const Footer: React.FC = () => {
         <div className="text-center">
           <p className="text-xs text-charcoal-500 flex items-center justify-center gap-1">
             Made with
-            © {currentYear} BIORICH.
+            © {currentYear} Peptijene.
           </p>
         </div>
       </div>

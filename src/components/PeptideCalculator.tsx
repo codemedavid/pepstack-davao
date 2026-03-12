@@ -120,7 +120,7 @@ const PeptideCalculator: React.FC = () => {
                                 {/* Syringe Type Selection */}
                                 <div className="space-y-2">
                                     <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                                        <Syringe className="w-4 h-4 text-purple-500" />
+                                        <Syringe className="w-4 h-4 text-pink-500" />
                                         Syringe Type
                                     </label>
                                     <select
