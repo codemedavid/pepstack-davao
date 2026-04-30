@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ShieldCheck, Package, CreditCard, Activity, Copy, Check, MessageCircle, Tag, Upload, Database, Lock, Truck } from 'lucide-react';
+import { useMutation } from 'convex/react';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import type { CartItem } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useShippingLocations } from '../hooks/useShippingLocations';
 import { useCouriers } from '../hooks/useCouriers';
-import { supabase } from '../lib/supabase';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+
+const httpClient = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
 
 interface CheckoutProps {
     cartItems: CartItem[];
@@ -19,6 +24,8 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     const { locations: shippingLocations } = useShippingLocations();
     const { couriers } = useCouriers();
     const { siteSettings } = useSiteSettings();
+    const createOrder = useMutation(api.orders.create);
+    const incrementPromoUsage = useMutation(api.promoCodes.incrementUsage);
 
     const whatsappEnabled = siteSettings?.contact_whatsapp_enabled === 'true';
     const telegramEnabled = siteSettings?.contact_telegram_enabled === 'true';
@@ -104,14 +111,9 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
         setIsApplyingPromo(true);
 
         try {
-            const { data: promo, error } = await supabase
-                .from('promo_codes')
-                .select('*')
-                .eq('code', code)
-                .eq('active', true)
-                .single();
+            const promo = await httpClient.query(api.promoCodes.findByCode, { code });
 
-            if (error || !promo) {
+            if (!promo || !promo.active) {
                 setPromoError('Invalid or inactive promo code');
                 setIsApplyingPromo(false);
                 return;
@@ -246,10 +248,9 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
             const randomDigits = Math.floor(Math.random() * 9000 + 1000); // 1000-9999
             const customOrderNumber = `BRC-${randomDigits}`;
 
-            // Save order to database
-            const { data: orderData, error: orderError } = await supabase
-                .from('orders')
-                .insert([{
+            let orderData;
+            try {
+                orderData = await createOrder({
                     customer_name: fullName,
                     customer_email: email,
                     customer_phone: phone,
@@ -259,43 +260,32 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
                     shipping_state: state,
                     shipping_zip_code: zipCode,
                     order_items: orderItems,
-                    total_price: Math.max(0, totalPrice - discountAmount), // Store subtotal minus discount (not including shipping)
+                    total_price: Math.max(0, totalPrice - discountAmount),
                     shipping_fee: shippingFee,
-                    courier_id: selectedCourierId || null,
+                    courier_id: selectedCourierId ? (selectedCourierId as Id<'couriers'>) : null,
                     shipping_location: shippingLocation,
-                    payment_method_id: paymentMethod?.id || null,
-                    payment_method_name: paymentMethod?.name || null,
+                    payment_method_id: paymentMethod?.id ?? null,
+                    payment_method_name: paymentMethod?.name ?? null,
                     payment_proof_url: paymentProofUrl,
-                    contact_method: contactMethod || null,
+                    contact_method: contactMethod || undefined,
                     notes: notes.trim() || null,
                     order_status: 'new',
                     payment_status: 'pending',
-                    promo_code_id: appliedPromo?.id || null,
-                    promo_code: appliedPromo?.code || null,
+                    promo_code_id: appliedPromo?.id ? (appliedPromo.id as Id<'promoCodes'>) : null,
+                    promo_code: appliedPromo?.code ?? null,
                     discount_applied: discountAmount,
-                    order_number: customOrderNumber
-                }])
-                .select()
-                .single();
-
-            if (orderError) {
+                    order_number: customOrderNumber,
+                });
+            } catch (orderError: any) {
                 console.error('❌ Error saving order:', orderError);
-                console.error('Error code:', orderError.code);
-                console.error('Error details:', orderError.details);
-                console.error('Error hint:', orderError.hint);
-
-                alert(`Failed to save order: ${orderError.message}\n\nError code: ${orderError.code || 'N/A'}\n\nPlease contact support if this issue persists.`);
+                alert(`Failed to save order: ${orderError?.message ?? 'Unknown error'}\n\nPlease contact support if this issue persists.`);
                 return;
             }
 
-            // Update promo code usage count
             if (appliedPromo) {
-                const { error: promoUpdateError } = await supabase
-                    .from('promo_codes')
-                    .update({ usage_count: appliedPromo.usage_count + 1 })
-                    .eq('id', appliedPromo.id);
-
-                if (promoUpdateError) {
+                try {
+                    await incrementPromoUsage({ id: appliedPromo.id as Id<'promoCodes'> });
+                } catch (promoUpdateError) {
                     console.error('Failed to update promo usage count:', promoUpdateError);
                 }
             }

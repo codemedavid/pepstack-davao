@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 export interface Courier {
     id: string;
@@ -12,86 +13,37 @@ export interface Courier {
 }
 
 export const useCouriers = () => {
-    const [couriers, setCouriers] = useState<Courier[]>([]);
-    const [loading, setLoading] = useState(true);
+    const data = useQuery(api.couriers.list, {});
+    const createMut = useMutation(api.couriers.create);
+    const updateMut = useMutation(api.couriers.update);
+    const deleteMut = useMutation(api.couriers.remove);
 
-    const fetchCouriers = useCallback(async () => {
-        try {
-            setLoading(true);
-            const { data, error } = await supabase
-                .from('couriers')
-                .select('*')
-                .order('sort_order', { ascending: true });
+    const couriers = (data ?? []) as Courier[];
+    const loading = data === undefined;
 
-            if (error) throw error;
-            setCouriers(data || []);
-        } catch (error) {
-            console.error('Error fetching couriers:', error);
-            // Return default couriers if table doesn't exist
-            setCouriers([
-                { id: '00000000-0000-0000-0000-000000000001', name: 'LBC Express', code: 'lbc', tracking_url_template: 'https://www.lbcexpress.com/track/?tracking_no={tracking}', is_active: true, sort_order: 1, created_at: new Date().toISOString() },
-                { id: '00000000-0000-0000-0000-000000000002', name: 'Lalamove', code: 'lalamove', tracking_url_template: null, is_active: true, sort_order: 2, created_at: new Date().toISOString() },
-                { id: '00000000-0000-0000-0000-000000000003', name: 'Maxim', code: 'maxim', tracking_url_template: null, is_active: true, sort_order: 3, created_at: new Date().toISOString() },
-                { id: '00000000-0000-0000-0000-000000000004', name: 'J&T Express', code: 'jnt', tracking_url_template: 'https://www.jtexpress.ph/index/query/gzquery.html?bills={tracking}', is_active: true, sort_order: 4, created_at: new Date().toISOString() },
-            ]);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    const addCourier = async (courier: Omit<Courier, 'id' | 'created_at'>) => {
-        try {
-            const { data, error } = await supabase
-                .from('couriers')
-                .insert([courier])
-                .select()
-                .single();
-
-            if (error) throw error;
-            setCouriers(prev => [...prev, data]);
-            return data;
-        } catch (error) {
-            console.error('Error adding courier:', error);
-            throw error;
-        }
-    };
+    const addCourier = async (courier: Omit<Courier, 'id' | 'created_at'>) =>
+        await createMut({
+            code: courier.code,
+            name: courier.name,
+            tracking_url_template: courier.tracking_url_template,
+            is_active: courier.is_active,
+            sort_order: courier.sort_order,
+        });
 
     const updateCourier = async (id: string, updates: Partial<Courier>) => {
-        try {
-            const { data, error } = await supabase
-                .from('couriers')
-                .update(updates)
-                .eq('id', id)
-                .select()
-                .single();
-
-            if (error) throw error;
-            setCouriers(prev => prev.map(c => c.id === id ? data : c));
-            return data;
-        } catch (error) {
-            console.error('Error updating courier:', error);
-            throw error;
-        }
+        await updateMut({
+            id: id as Id<'couriers'>,
+            code: updates.code,
+            name: updates.name,
+            tracking_url_template: updates.tracking_url_template,
+            is_active: updates.is_active,
+            sort_order: updates.sort_order,
+        });
     };
 
     const deleteCourier = async (id: string) => {
-        try {
-            const { error } = await supabase
-                .from('couriers')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
-            setCouriers(prev => prev.filter(c => c.id !== id));
-        } catch (error) {
-            console.error('Error deleting courier:', error);
-            throw error;
-        }
+        await deleteMut({ id: id as Id<'couriers'> });
     };
-
-    useEffect(() => {
-        fetchCouriers();
-    }, [fetchCouriers]);
 
     return {
         couriers,
@@ -99,6 +51,6 @@ export const useCouriers = () => {
         addCourier,
         updateCourier,
         deleteCourier,
-        refetch: fetchCouriers
+        refetch: () => {},
     };
 };

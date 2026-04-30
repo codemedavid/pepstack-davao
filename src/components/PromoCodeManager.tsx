@@ -1,16 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import { PromoCode } from '../types';
 import { Plus, Search, Tag, Trash2, Edit2, CheckCircle, XCircle } from 'lucide-react';
 
 const PromoCodeManager: React.FC = () => {
-    const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
-    const [loading, setLoading] = useState(true);
+    const data = useQuery(api.promoCodes.list, {});
+    const createMut = useMutation(api.promoCodes.create);
+    const updateMut = useMutation(api.promoCodes.update);
+    const deleteMut = useMutation(api.promoCodes.remove);
+
+    const promoCodes = (data ?? []) as PromoCode[];
+    const loading = data === undefined;
+
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCode, setEditingCode] = useState<PromoCode | null>(null);
 
-    // Form State
     const [formData, setFormData] = useState<Partial<PromoCode>>({
         code: '',
         discount_type: 'fixed',
@@ -20,53 +27,29 @@ const PromoCodeManager: React.FC = () => {
         active: true
     });
 
-    useEffect(() => {
-        fetchPromoCodes();
-    }, []);
-
-    const fetchPromoCodes = async () => {
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('promo_codes')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('Error fetching promo codes:', error);
-        } else {
-            setPromoCodes((data as PromoCode[]) || []);
-        }
-        setLoading(false);
-    };
-
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const dataToSave = {
-                ...formData,
-                code: formData.code?.toUpperCase(), // Ensure uppercase
-                updated_at: new Date().toISOString()
+            const payload = {
+                code: (formData.code ?? '').toUpperCase(),
+                discount_type: (formData.discount_type ?? 'fixed') as 'fixed' | 'percentage',
+                discount_value: formData.discount_value ?? 0,
+                min_purchase_amount: formData.min_purchase_amount ?? 0,
+                max_discount_amount: formData.max_discount_amount ?? null,
+                end_date: formData.end_date ?? null,
+                usage_limit: formData.usage_limit ?? null,
+                active: formData.active ?? true,
             };
 
             if (editingCode) {
-                // Update
-                const { error } = await supabase
-                    .from('promo_codes')
-                    .update(dataToSave)
-                    .eq('id', editingCode.id);
-                if (error) throw error;
+                await updateMut({ id: editingCode.id as Id<'promoCodes'>, ...payload });
             } else {
-                // Create
-                const { error } = await supabase
-                    .from('promo_codes')
-                    .insert([dataToSave]);
-                if (error) throw error;
+                await createMut(payload);
             }
 
             setIsModalOpen(false);
             setEditingCode(null);
             resetForm();
-            fetchPromoCodes();
             alert('Promo code saved successfully!');
         } catch (error: any) {
             console.error('Error saving promo code:', error);
@@ -77,9 +60,7 @@ const PromoCodeManager: React.FC = () => {
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this promo code?')) return;
         try {
-            const { error } = await supabase.from('promo_codes').delete().eq('id', id);
-            if (error) throw error;
-            fetchPromoCodes();
+            await deleteMut({ id: id as Id<'promoCodes'> });
         } catch (error: any) {
             alert('Error deleting promo code');
         }
@@ -87,12 +68,7 @@ const PromoCodeManager: React.FC = () => {
 
     const toggleActive = async (id: string, currentStatus: boolean) => {
         try {
-            const { error } = await supabase
-                .from('promo_codes')
-                .update({ active: !currentStatus })
-                .eq('id', id);
-            if (error) throw error;
-            fetchPromoCodes();
+            await updateMut({ id: id as Id<'promoCodes'>, active: !currentStatus });
         } catch (error) {
             console.error('Error updating status:', error);
         }

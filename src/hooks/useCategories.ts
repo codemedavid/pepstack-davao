@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 export interface Category {
   id: string;
@@ -12,186 +14,68 @@ export interface Category {
 }
 
 export const useCategories = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const data = useQuery(api.categories.list, { activeOnly: true });
+  const createMut = useMutation(api.categories.create);
+  const updateMut = useMutation(api.categories.update);
+  const deleteMut = useMutation(api.categories.remove);
+  const reorderMut = useMutation(api.categories.reorder);
 
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
+  const loading = data === undefined;
 
-      const { data, error: fetchError } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('active', true)
-        .order('sort_order', { ascending: true });
-
-      if (fetchError) throw fetchError;
-
-      const hasAllCategory = data?.some(cat => cat.id === 'all');
-
-      let finalCategories = data || [];
-
-      if (!hasAllCategory) {
-        const allCategory: Category = {
-          id: 'all',
-          name: 'All Peptides',
-          icon: 'Grid',
-          sort_order: 0,
-          active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        finalCategories = [allCategory, ...finalCategories];
-      }
-
-      setCategories(finalCategories);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch categories');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const categories = useMemo<Category[]>(() => {
+    const list = (data ?? []) as Category[];
+    if (list.some((c) => c.id === 'all')) return list;
+    const sentinel: Category = {
+      id: 'all',
+      name: 'All Peptides',
+      icon: 'Grid',
+      sort_order: 0,
+      active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    return [sentinel, ...list];
+  }, [data]);
 
   const addCategory = async (category: Omit<Category, 'created_at' | 'updated_at'>) => {
-    try {
-      const { data, error: insertError } = await supabase
-        .from('categories')
-        .insert({
-          id: category.id,
-          name: category.name,
-          icon: category.icon,
-          sort_order: category.sort_order,
-          active: category.active
-        })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-
-      await fetchCategories();
-      return data;
-    } catch (err) {
-      console.error('Error adding category:', err);
-      throw err;
-    }
+    return await createMut({
+      name: category.name,
+      icon: category.icon,
+      sort_order: category.sort_order,
+      active: category.active,
+    });
   };
 
   const updateCategory = async (id: string, updates: Partial<Category>) => {
-    try {
-      const { error: updateError } = await supabase
-        .from('categories')
-        .update({
-          name: updates.name,
-          icon: updates.icon,
-          sort_order: updates.sort_order,
-          active: updates.active
-        })
-        .eq('id', id);
-
-      if (updateError) throw updateError;
-
-      await fetchCategories();
-    } catch (err) {
-      console.error('Error updating category:', err);
-      throw err;
-    }
+    await updateMut({
+      id: id as Id<'categories'>,
+      name: updates.name,
+      icon: updates.icon,
+      sort_order: updates.sort_order,
+      active: updates.active,
+    });
   };
 
   const deleteCategory = async (id: string) => {
-    try {
-      // Check if category has products
-      const { data: products, error: checkError } = await supabase
-        .from('products')
-        .select('id')
-        .eq('category', id)
-        .limit(1);
-
-      if (checkError) throw checkError;
-
-      if (products && products.length > 0) {
-        throw new Error('Cannot delete category that contains products. Please move or delete the products first.');
-      }
-
-      const { error: deleteError } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id);
-
-      if (deleteError) throw deleteError;
-
-      await fetchCategories();
-    } catch (err) {
-      console.error('Error deleting category:', err);
-      throw err;
-    }
+    await deleteMut({ id: id as Id<'categories'> });
   };
 
-  const reorderCategories = async (reorderedCategories: Category[]) => {
-    try {
-      const updates = reorderedCategories.map((cat, index) => ({
-        id: cat.id,
-        sort_order: index + 1
-      }));
-
-      for (const update of updates) {
-        await supabase
-          .from('categories')
-          .update({ sort_order: update.sort_order })
-          .eq('id', update.id);
-      }
-
-      await fetchCategories();
-    } catch (err) {
-      console.error('Error reordering categories:', err);
-      throw err;
-    }
+  const reorderCategories = async (reordered: Category[]) => {
+    await reorderMut({
+      orderedIds: reordered
+        .filter((c) => c.id !== 'all')
+        .map((c) => c.id as Id<'categories'>),
+    });
   };
-
-  useEffect(() => {
-    fetchCategories();
-
-    // Set up real-time subscription for category changes
-    const categoriesChannel = supabase
-      .channel('categories-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'categories'
-        },
-        (payload) => {
-          console.log('Category changed:', payload);
-          fetchCategories(); // Refetch categories when any change occurs
-        }
-      )
-      .subscribe();
-
-    // Refetch data when window regains focus
-    const handleFocus = () => {
-      fetchCategories();
-    };
-
-    window.addEventListener('focus', handleFocus);
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      supabase.removeChannel(categoriesChannel);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
 
   return {
     categories,
     loading,
-    error,
+    error: null as string | null,
     addCategory,
     updateCategory,
     deleteCategory,
     reorderCategories,
-    refetch: fetchCategories
+    refetch: () => {},
   };
 };

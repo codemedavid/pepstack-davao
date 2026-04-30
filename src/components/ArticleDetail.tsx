@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import { ArrowLeft, Calendar, User } from 'lucide-react';
 
 interface Article {
@@ -15,37 +16,12 @@ interface Article {
 export default function ArticleDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [article, setArticle] = useState<Article | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (id) {
-            fetchArticle(id);
-        }
-    }, [id]);
-
-    const fetchArticle = async (articleId: string) => {
-        try {
-            setLoading(true);
-
-            const { data, error } = await supabase
-                .from('guide_topics')
-                .select('*')
-                .eq('id', articleId)
-                .eq('is_enabled', true)
-                .single();
-
-            if (error) throw error;
-
-            if (data) {
-                setArticle(data);
-            }
-        } catch (error) {
-            console.error('Error fetching article:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const data = useQuery(
+        api.articles.get,
+        id ? { id: id as Id<'articles'> } : 'skip',
+    );
+    const article = (data ?? null) as Article | null;
+    const loading = data === undefined;
 
     if (loading) {
         return (

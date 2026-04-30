@@ -1,388 +1,152 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import type { Product, ProductVariation } from '../types';
 
 export function useMenu() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const data = useQuery(api.products.list, { availableOnly: true });
+  const createMut = useMutation(api.products.create);
+  const updateMut = useMutation(api.products.update);
+  const deleteMut = useMutation(api.products.remove);
+  const addVariationMut = useMutation(api.products.addVariation);
+  const updateVariationMut = useMutation(api.products.updateVariation);
+  const deleteVariationMut = useMutation(api.products.removeVariation);
 
-  useEffect(() => {
-    fetchProducts();
-
-    // Set up real-time subscription for product changes with unique channel name
-    const channelId = `products-realtime-${Date.now()}`;
-    const productsChannel = supabase
-      .channel(channelId)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'products'
-        },
-        (payload) => {
-          console.log('✅ Product changed:', payload);
-          fetchProducts(); // Refetch all products when any change occurs
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'product_variations'
-        },
-        (payload) => {
-          console.log('✅ Variation changed:', payload);
-          fetchProducts(); // Refetch all products when variations change
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Real-time subscription status:', status);
-      });
-
-    // Refetch data when window regains focus (user switches back from admin)
-    // But only if we're not on the admin page to avoid interfering with forms
-    let focusRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
-    const handleFocus = () => {
-      // Check if we're on admin page - if so, don't refresh
-      const isAdminPage = window.location.pathname === '/admin';
-      if (isAdminPage) {
-        console.log('👁️ Window focused on admin page - skipping refresh to avoid form interference');
-        return;
-      }
-
-      // Debounce focus refresh to avoid too frequent refreshes
-      if (focusRefreshTimeout) {
-        clearTimeout(focusRefreshTimeout);
-      }
-
-      focusRefreshTimeout = setTimeout(() => {
-        console.log('👁️ Window focused - refreshing products...');
-        fetchProducts();
-        focusRefreshTimeout = null;
-      }, 1000); // Wait 1 second before refreshing
-    };
-
-    // Also add visibility change handler for better cross-tab updates
-    // But skip if on admin page
-    const handleVisibilityChange = () => {
-      if (document.hidden) return;
-
-      const isAdminPage = window.location.pathname === '/admin';
-      if (isAdminPage) {
-        console.log('👁️ Tab became visible on admin page - skipping refresh');
-        return;
-      }
-
-      // Debounce visibility refresh
-      if (focusRefreshTimeout) {
-        clearTimeout(focusRefreshTimeout);
-      }
-
-      focusRefreshTimeout = setTimeout(() => {
-        console.log('👁️ Tab became visible - refreshing products...');
-        fetchProducts();
-        focusRefreshTimeout = null;
-      }, 1000);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      supabase.removeChannel(productsChannel);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (focusRefreshTimeout) {
-        clearTimeout(focusRefreshTimeout);
-      }
-    };
-  }, []);
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      console.log('🔄 Fetching products from database...');
-
-      // Force fresh data by clearing any potential cache
-      const timestamp = Date.now();
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, description, category, base_price, discount_price, discount_start_date, discount_end_date, discount_active, purity_percentage, molecular_weight, cas_number, sequence, storage_conditions, inclusions, stock_quantity, available, featured, image_url, safety_sheet_url, created_at, updated_at')
-        .eq('available', true)
-        .order('featured', { ascending: false })
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-
-      console.log(`📦 Found ${data?.length || 0} products`);
-
-      // Log products with discounts
-      const productsWithDiscounts = (data || []).filter(p => p.discount_active && p.discount_price);
-      if (productsWithDiscounts.length > 0) {
-        console.log(`💰 Products with ACTIVE discounts: ${productsWithDiscounts.length}`,
-          productsWithDiscounts.map(p => ({
-            name: p.name,
-            base_price: p.base_price,
-            discount_price: p.discount_price,
-            discount_active: p.discount_active,
-            savings: p.base_price - (p.discount_price || 0)
-          }))
-        );
-      } else {
-        console.log('⚠️ No products found with discount_active=true AND discount_price set');
-      }
-
-      // Log products with images for debugging
-      const productsWithImages = (data || []).filter(p => p.image_url);
-      if (productsWithImages.length > 0) {
-        console.log(`🖼️ Products with images: ${productsWithImages.length}`,
-          productsWithImages.map(p => ({ name: p.name, image_url: p.image_url?.substring(0, 50) + '...' }))
-        );
-      }
-
-      // Fetch variations for each product
-      const productsWithVariations = await Promise.all(
-        (data || []).map(async (product) => {
-          const { data: variations } = await supabase
-            .from('product_variations')
-            .select('*')
-            .eq('product_id', product.id)
-            .order('quantity_mg', { ascending: true });
-
-          if (variations && variations.length > 0) {
-            console.log(`  └─ ${product.name}: ${variations.length} variations, prices:`, variations.map(v => `${v.name}:₱${v.price}`));
-          }
-
-          // Log if product has image_url
-          if (product.image_url) {
-            console.log(`  🖼️ ${product.name} has image: ${product.image_url.substring(0, 60)}...`);
-          }
-
-          return {
-            ...product,
-            variations: variations || []
-          };
-        })
-      );
-
-      console.log('✅ Products updated successfully at', new Date().toLocaleTimeString());
-      setProducts(productsWithVariations);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch products');
-      console.error('❌ Error fetching products:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const products = (data ?? []) as Product[];
+  const loading = data === undefined;
 
   const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Ensure image_url is explicitly included
-      const productData: any = {
-        ...product,
-        image_url: product.image_url !== undefined ? product.image_url : null,
-      };
-
-      console.log('📤 Adding product to database:', { name: productData.name, image_url: productData.image_url });
-      const { data, error } = await supabase
-        .from('products')
-        .insert([productData])
-        .select('*, image_url') // Explicitly include image_url in response
-        .single();
-
-      if (error) {
-        console.error('❌ Supabase insert error:', error);
-        throw error;
-      }
-
-      console.log('✅ Product added to database:', { id: data?.id, image_url: data?.image_url });
-
-      if (data) {
-        setProducts([...products, data]);
-      }
-      return { success: true, data };
+      const result = await createMut({
+        name: product.name,
+        description: product.description,
+        category: product.category as Id<'categories'>,
+        base_price: product.base_price,
+        purity_percentage: product.purity_percentage,
+        stock_quantity: product.stock_quantity,
+        available: product.available,
+        featured: product.featured,
+        image_url: product.image_url ?? null,
+        discount_price: product.discount_price ?? null,
+        discount_active: product.discount_active,
+      });
+      return { success: true as const, data: result };
     } catch (err) {
-      console.error('❌ Error adding product:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Failed to add product' };
+      return {
+        success: false as const,
+        error: err instanceof Error ? err.message : 'Failed to add product',
+      };
     }
   };
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
     try {
-      // Ensure image_url is explicitly included in the update payload
-      // Handle both null, undefined, and empty string cases
-      let imageUrlValue: string | null = null;
-      if (updates.image_url !== undefined && updates.image_url !== null) {
-        const urlString = String(updates.image_url).trim();
-        imageUrlValue = urlString === '' ? null : urlString;
+      const patch: Record<string, unknown> = {};
+      if (updates.name !== undefined) patch.name = updates.name;
+      if (updates.description !== undefined) patch.description = updates.description;
+      if (updates.category !== undefined) patch.category = updates.category as Id<'categories'>;
+      if (updates.base_price !== undefined) patch.base_price = updates.base_price;
+      if (updates.discount_price !== undefined) patch.discount_price = updates.discount_price;
+      if (updates.discount_active !== undefined) patch.discount_active = updates.discount_active;
+      if (updates.purity_percentage !== undefined) patch.purity_percentage = updates.purity_percentage;
+      if (updates.molecular_weight !== undefined) patch.molecular_weight = updates.molecular_weight;
+      if (updates.cas_number !== undefined) patch.cas_number = updates.cas_number;
+      if (updates.sequence !== undefined) patch.sequence = updates.sequence;
+      if (updates.storage_conditions !== undefined) patch.storage_conditions = updates.storage_conditions;
+      if (updates.inclusions !== undefined) patch.inclusions = updates.inclusions;
+      if (updates.stock_quantity !== undefined) patch.stock_quantity = updates.stock_quantity;
+      if (updates.available !== undefined) patch.available = updates.available;
+      if (updates.featured !== undefined) patch.featured = updates.featured;
+      if (updates.image_url !== undefined) {
+        const v = String(updates.image_url ?? '').trim();
+        patch.image_url = v === '' ? null : v;
       }
-
-      // Create update payload with explicit image_url
-      const updatePayload: any = {
-        ...updates,
-        image_url: imageUrlValue, // Always explicitly set image_url
-      };
-
-      // Force image_url to be included even if it was somehow excluded
-      updatePayload.image_url = imageUrlValue;
-
-      console.log('📤 Updating product in database:', {
-        id,
-        image_url: updatePayload.image_url,
-        image_url_type: typeof updatePayload.image_url,
-        image_url_length: updatePayload.image_url?.length || 0,
-        payload_keys: Object.keys(updatePayload),
-        fullPayload: updatePayload
-      });
-
-      // Explicitly select image_url to ensure it's returned
-      const { data, error } = await supabase
-        .from('products')
-        .update(updatePayload)
-        .eq('id', id)
-        .select('*, image_url') // Explicitly include image_url in response
-        .single();
-
-      if (error) {
-        console.error('❌ Supabase update error:', error);
-        console.error('❌ Error details:', JSON.stringify(error, null, 2));
-        console.error('❌ Error code:', error.code);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Error hint:', error.hint);
-
-        // Provide more helpful error message
-        let errorMessage = error.message || 'Unknown error';
-        if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy')) {
-          errorMessage = 'Permission denied. Check Row Level Security (RLS) policies for the products table.';
-        } else if (error.message?.includes('column') || error.message?.includes('does not exist')) {
-          errorMessage = 'Database column error. Make sure image_url column exists in products table.';
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      console.log('✅ Product updated in database:', {
-        id,
-        image_url: data?.image_url,
-        image_url_type: typeof data?.image_url,
-        image_url_length: data?.image_url?.length || 0,
-        fullData: data
-      });
-
-      // Verify the image_url was actually saved
-      if (updatePayload.image_url && data?.image_url !== updatePayload.image_url) {
-        console.warn('⚠️ WARNING: image_url mismatch!', {
-          sent: updatePayload.image_url,
-          sent_type: typeof updatePayload.image_url,
-          received: data?.image_url,
-          received_type: typeof data?.image_url
-        });
-      } else if (updatePayload.image_url && data?.image_url === updatePayload.image_url) {
-        console.log('✅ Image URL verified - matches what was sent');
-      }
-
-      if (data) {
-        // Update local state immediately
-        setProducts(products.map(p => p.id === id ? { ...data, variations: p.variations } : p));
-      }
-      return { success: true, data };
+      if (updates.safety_sheet_url !== undefined) patch.safety_sheet_url = updates.safety_sheet_url;
+      const result = await updateMut({ id: id as Id<'products'>, patch: patch as any });
+      return { success: true as const, data: result };
     } catch (err) {
-      console.error('❌ Error updating product:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update product';
-      return { success: false, error: errorMessage };
+      return {
+        success: false as const,
+        error: err instanceof Error ? err.message : 'Failed to update product',
+      };
     }
   };
 
   const deleteProduct = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setProducts(products.filter(p => p.id !== id));
-      return { success: true };
+      await deleteMut({ id: id as Id<'products'> });
+      return { success: true as const };
     } catch (err) {
-      console.error('Error deleting product:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Failed to delete product' };
+      return {
+        success: false as const,
+        error: err instanceof Error ? err.message : 'Failed to delete product',
+      };
     }
   };
 
   const addVariation = async (variation: Omit<ProductVariation, 'id' | 'created_at'>) => {
     try {
-      const { data, error } = await supabase
-        .from('product_variations')
-        .insert([variation])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Refresh products to include new variation
-      await fetchProducts();
-      return { success: true, data };
+      const result = await addVariationMut({
+        product_id: variation.product_id as Id<'products'>,
+        name: variation.name,
+        quantity_mg: variation.quantity_mg,
+        price: variation.price,
+        stock_quantity: variation.stock_quantity,
+        discount_price: variation.discount_price ?? null,
+        discount_active: variation.discount_active,
+      });
+      return { success: true as const, data: result };
     } catch (err) {
-      console.error('Error adding variation:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Failed to add variation' };
+      return {
+        success: false as const,
+        error: err instanceof Error ? err.message : 'Failed to add variation',
+      };
     }
   };
 
   const updateVariation = async (id: string, updates: Partial<ProductVariation>) => {
     try {
-      const { data, error } = await supabase
-        .from('product_variations')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Refresh products to include updated variation
-      await fetchProducts();
-      return { success: true, data };
+      await updateVariationMut({
+        id: id as Id<'productVariations'>,
+        name: updates.name,
+        quantity_mg: updates.quantity_mg,
+        price: updates.price,
+        stock_quantity: updates.stock_quantity,
+        discount_price: updates.discount_price === undefined ? undefined : updates.discount_price,
+        discount_active: updates.discount_active,
+      });
+      return { success: true as const };
     } catch (err) {
-      console.error('Error updating variation:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Failed to update variation' };
+      return {
+        success: false as const,
+        error: err instanceof Error ? err.message : 'Failed to update variation',
+      };
     }
   };
 
   const deleteVariation = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('product_variations')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // Refresh products to remove variation
-      await fetchProducts();
-      return { success: true };
+      await deleteVariationMut({ id: id as Id<'productVariations'> });
+      return { success: true as const };
     } catch (err) {
-      console.error('Error deleting variation:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Failed to delete variation' };
+      return {
+        success: false as const,
+        error: err instanceof Error ? err.message : 'Failed to delete variation',
+      };
     }
   };
 
   return {
-    menuItems: products, // Keep the same name for backward compatibility
+    menuItems: products,
     products,
     loading,
-    error,
-    refreshProducts: fetchProducts,
+    error: null as string | null,
+    refreshProducts: async () => {},
     addProduct,
     updateProduct,
     deleteProduct,
     addVariation,
     updateVariation,
-    deleteVariation
+    deleteVariation,
   };
 }

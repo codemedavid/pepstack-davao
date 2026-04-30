@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Save, X, ArrowLeft, GripVertical, Package } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { useCategories, Category } from '../hooks/useCategories';
-import { supabase } from '../lib/supabase';
 
 interface CategoryManagerProps {
   onBack: () => void;
@@ -9,9 +10,10 @@ interface CategoryManagerProps {
 
 const CategoryManager: React.FC<CategoryManagerProps> = ({ onBack }) => {
   const { categories, addCategory, updateCategory, deleteCategory, reorderCategories } = useCategories();
+  const productCountsData = useQuery(api.categories.productCounts, {});
+  const categoryProductCounts = (productCountsData ?? {}) as Record<string, number>;
   const [currentView, setCurrentView] = useState<'list' | 'add' | 'edit'>('list');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [categoryProductCounts, setCategoryProductCounts] = useState<Record<string, number>>({});
   const [formData, setFormData] = useState({
     id: '',
     name: '',
@@ -19,33 +21,6 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onBack }) => {
     sort_order: 0,
     active: true
   });
-
-  // Fetch product counts for each category
-  useEffect(() => {
-    const fetchProductCounts = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('category');
-
-        if (error) throw error;
-
-        const counts: Record<string, number> = {};
-        if (data) {
-          data.forEach((product) => {
-            counts[product.category] = (counts[product.category] || 0) + 1;
-          });
-        }
-        setCategoryProductCounts(counts);
-      } catch (error) {
-        console.error('Error fetching product counts:', error);
-      }
-    };
-
-    if (categories.length > 0) {
-      fetchProductCounts();
-    }
-  }, [categories]);
 
   const handleAddCategory = () => {
     const nextSortOrder = Math.max(...categories.map(c => c.sort_order), 0) + 1;

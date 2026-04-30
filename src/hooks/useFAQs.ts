@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 export interface FAQItem {
     id: string;
@@ -20,7 +22,6 @@ export interface FAQCategory {
 }
 
 const defaultFAQs: FAQItem[] = [
-    // Product & Usage
     {
         id: '1',
         question: 'Can I use Tirzepatide?',
@@ -71,7 +72,6 @@ const defaultFAQs: FAQItem[] = [
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     },
-    // Ordering & Packaging
     {
         id: '6',
         question: "What's included in my order?",
@@ -102,7 +102,6 @@ const defaultFAQs: FAQItem[] = [
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     },
-    // Payment Methods
     {
         id: '9',
         question: 'What payment options do you accept?',
@@ -113,7 +112,6 @@ const defaultFAQs: FAQItem[] = [
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     },
-    // Shipping & Delivery
     {
         id: '10',
         question: 'Where are you located?',
@@ -157,140 +155,75 @@ const defaultFAQs: FAQItem[] = [
 ];
 
 export const useFAQs = () => {
-    const [faqs, setFaqs] = useState<FAQItem[]>(defaultFAQs);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchFAQs = async () => {
-        try {
-            setLoading(true);
-            const { data, error: fetchError } = await supabase
-                .from('faqs')
-                .select('*')
-                .eq('is_active', true)
-                .order('order_index', { ascending: true });
-
-            if (fetchError) {
-                console.warn('FAQs table not found, using defaults:', fetchError.message);
-                setFaqs(defaultFAQs);
-            } else if (data && data.length > 0) {
-                setFaqs(data);
-            } else {
-                setFaqs(defaultFAQs);
-            }
-        } catch (err) {
-            console.error('Error fetching FAQs:', err);
-            setFaqs(defaultFAQs);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchFAQs();
-    }, []);
-
-    const categories = [...new Set(faqs.map(faq => faq.category))];
-
-    return { faqs, categories, loading, error, refetch: fetchFAQs };
+    const data = useQuery(api.faqs.list, { activeOnly: true });
+    const loading = data === undefined;
+    const faqs = useMemo<FAQItem[]>(() => {
+        const list = (data ?? []) as FAQItem[];
+        return list.length > 0 ? list : defaultFAQs;
+    }, [data]);
+    const categories = useMemo(
+        () => [...new Set(faqs.map((f) => f.category))],
+        [faqs],
+    );
+    return { faqs, categories, loading, error: null as string | null, refetch: () => {} };
 };
 
 export const useFAQsAdmin = () => {
-    const [faqs, setFaqs] = useState<FAQItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [usingDefaults, setUsingDefaults] = useState(false);
+    const data = useQuery(api.faqs.list, {});
+    const createMut = useMutation(api.faqs.create);
+    const updateMut = useMutation(api.faqs.update);
+    const deleteMut = useMutation(api.faqs.remove);
+    const seedMut = useMutation(api.faqs.seedMany);
 
-    const fetchAllFAQs = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const { data, error: fetchError } = await supabase
-                .from('faqs')
-                .select('*')
-                .order('order_index', { ascending: true });
+    const list = (data ?? []) as FAQItem[];
+    const usingDefaults = data !== undefined && list.length === 0;
+    const faqs = list.length > 0 ? list : defaultFAQs;
+    const loading = data === undefined;
 
-            if (fetchError) {
-                console.warn('FAQs table error:', fetchError.message);
-                setError(`Database error: ${fetchError.message}`);
-                setFaqs(defaultFAQs);
-                setUsingDefaults(true);
-            } else if (data && data.length > 0) {
-                setFaqs(data);
-                setUsingDefaults(false);
-            } else {
-                setFaqs(defaultFAQs);
-                setUsingDefaults(true);
-            }
-        } catch (err) {
-            console.error('Error fetching FAQs:', err);
-            setError(err instanceof Error ? err.message : 'Unknown error');
-            setFaqs(defaultFAQs);
-            setUsingDefaults(true);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const seedDefaults = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const faqsToInsert = defaultFAQs.map(({ id, created_at, updated_at, ...rest }) => rest);
-            const { error: insertError } = await supabase
-                .from('faqs')
-                .insert(faqsToInsert);
-
-            if (insertError) {
-                setError(`Failed to seed defaults: ${insertError.message}`);
-            } else {
-                await fetchAllFAQs();
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to seed defaults');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const addFAQ = async (faq: Omit<FAQItem, 'id' | 'created_at' | 'updated_at'>) => {
-        const { data, error } = await supabase
-            .from('faqs')
-            .insert([faq])
-            .select()
-            .single();
-
-        if (error) throw error;
-        await fetchAllFAQs();
-        return data;
-    };
+    const addFAQ = async (faq: Omit<FAQItem, 'id' | 'created_at' | 'updated_at'>) =>
+        await createMut({
+            question: faq.question,
+            answer: faq.answer,
+            category: faq.category,
+            order_index: faq.order_index,
+            is_active: faq.is_active,
+        });
 
     const updateFAQ = async (id: string, updates: Partial<FAQItem>) => {
-        const { data, error } = await supabase
-            .from('faqs')
-            .update({ ...updates, updated_at: new Date().toISOString() })
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        await fetchAllFAQs();
-        return data;
+        await updateMut({
+            id: id as Id<'faqs'>,
+            question: updates.question,
+            answer: updates.answer,
+            category: updates.category,
+            order_index: updates.order_index,
+            is_active: updates.is_active,
+        });
     };
 
     const deleteFAQ = async (id: string) => {
-        const { error } = await supabase
-            .from('faqs')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-        await fetchAllFAQs();
+        await deleteMut({ id: id as Id<'faqs'> });
     };
 
-    useEffect(() => {
-        fetchAllFAQs();
-    }, []);
+    const seedDefaults = async () => {
+        const payload = defaultFAQs.map(({ question, answer, category, order_index, is_active }) => ({
+            question,
+            answer,
+            category,
+            order_index,
+            is_active,
+        }));
+        await seedMut({ faqs: payload });
+    };
 
-    return { faqs, loading, error, usingDefaults, addFAQ, updateFAQ, deleteFAQ, seedDefaults, refetch: fetchAllFAQs };
+    return {
+        faqs,
+        loading,
+        error: null as string | null,
+        usingDefaults,
+        addFAQ,
+        updateFAQ,
+        deleteFAQ,
+        seedDefaults,
+        refetch: () => {},
+    };
 };

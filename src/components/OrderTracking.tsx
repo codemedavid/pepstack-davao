@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Search, Package, Truck, CheckCircle, Clock, AlertCircle, ArrowRight, ExternalLink, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../convex/_generated/api';
+
+const httpClient = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
 
 interface TrackingOrder {
     id: string;
@@ -38,26 +41,13 @@ const OrderTracking: React.FC = () => {
         setHasSearched(true);
 
         try {
-            // Use secure RPC function to fetch order
-            const { data, error } = await supabase
-                .rpc('get_order_details', {
-                    order_id_input: orderId.trim()
-                })
-                .single();
-
-            if (error) {
-                // If no rows returned by function, it usually returns a different error or null data depending on setup,
-                // but .single() will throw if 0 rows.
-                if (error.code === 'PGRST116') {
-                    setError('Order not found. Please check your Order ID and try again.');
-                } else {
-                    throw error;
-                }
-            } else if (data) {
-                // RPC returns the row directly when using single()
+            const data = await httpClient.query(api.orders.getDetailsForTracking, {
+                orderInput: orderId.trim(),
+            });
+            if (data) {
                 setOrder(data as TrackingOrder);
             } else {
-                setError('Order not found.');
+                setError('Order not found. Please check your Order ID and try again.');
             }
         } catch (err) {
             console.error('Error fetching order:', err);

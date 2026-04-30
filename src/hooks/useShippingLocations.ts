@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 export interface ShippingLocation {
     id: string;
@@ -9,117 +10,59 @@ export interface ShippingLocation {
     order_index: number;
 }
 
-// Default shipping locations (fallback if database table doesn't exist)
-const defaultLocations: ShippingLocation[] = [
-    { id: 'LBC_METRO', name: 'LBC - Metro Manila', fee: 150, is_active: true, order_index: 1 },
-    { id: 'LBC_PROVINCIAL', name: 'LBC - Provincial', fee: 200, is_active: true, order_index: 2 },
-    { id: 'LALAMOVE', name: 'Lalamove (Metro Manila / Davao)', fee: 0, is_active: true, order_index: 3 },
-];
-
 export const useShippingLocations = () => {
-    const [locations, setLocations] = useState<ShippingLocation[]>(defaultLocations);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const data = useQuery(api.shippingLocations.list, { activeOnly: true });
+    const loading = data === undefined;
+    const locations = useMemo<ShippingLocation[]>(() => (data ?? []) as ShippingLocation[], [data]);
 
-    const fetchLocations = async () => {
-        try {
-            setLoading(true);
-            const { data, error: fetchError } = await supabase
-                .from('shipping_locations')
-                .select('*')
-                .eq('is_active', true)
-                .order('order_index', { ascending: true });
+    const getShippingFee = (locationId: string): number =>
+        locations.find((l) => l.id === locationId)?.fee ?? 0;
 
-            if (fetchError) {
-                console.warn('Shipping locations table not found, using defaults:', fetchError.message);
-                setLocations(defaultLocations);
-            } else if (data && data.length > 0) {
-                setLocations(data);
-            } else {
-                setLocations(defaultLocations);
-            }
-        } catch (err) {
-            console.error('Error fetching shipping locations:', err);
-            setLocations(defaultLocations);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchLocations();
-    }, []);
-
-    const getShippingFee = (locationId: string): number => {
-        const location = locations.find(loc => loc.id === locationId);
-        return location ? location.fee : 0;
-    };
-
-    return { locations, loading, error, getShippingFee, refetch: fetchLocations };
+    return { locations, loading, error: null as string | null, getShippingFee, refetch: () => {} };
 };
 
-// Admin hook with CRUD operations
 export const useShippingLocationsAdmin = () => {
-    const [locations, setLocations] = useState<ShippingLocation[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const data = useQuery(api.shippingLocations.list, {});
+    const createMut = useMutation(api.shippingLocations.create);
+    const updateMut = useMutation(api.shippingLocations.update);
+    const deleteMut = useMutation(api.shippingLocations.remove);
 
-    const fetchAllLocations = async () => {
-        try {
-            setLoading(true);
-            const { data, error: fetchError } = await supabase
-                .from('shipping_locations')
-                .select('*')
-                .order('order_index', { ascending: true });
-
-            if (fetchError) {
-                console.warn('Shipping locations table not found:', fetchError.message);
-                setLocations([]);
-                setError('Table not found. Please run the migration.');
-            } else {
-                setLocations(data || []);
-                setError(null);
-            }
-        } catch (err) {
-            console.error('Error fetching shipping locations:', err);
-            setError(err instanceof Error ? err.message : 'Unknown error');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const locations = (data ?? []) as ShippingLocation[];
+    const loading = data === undefined;
 
     const updateLocation = async (id: string, updates: Partial<ShippingLocation>) => {
-        const { error } = await supabase
-            .from('shipping_locations')
-            .update({ ...updates, updated_at: new Date().toISOString() })
-            .eq('id', id);
-
-        if (error) throw error;
-        await fetchAllLocations();
+        await updateMut({
+            code: id,
+            name: updates.name,
+            fee: updates.fee,
+            is_active: updates.is_active,
+            order_index: updates.order_index,
+        });
     };
 
-    const addLocation = async (location: Omit<ShippingLocation, 'order_index'> & { order_index?: number }) => {
-        const { error } = await supabase
-            .from('shipping_locations')
-            .insert([{ ...location, order_index: location.order_index || locations.length + 1 }]);
-
-        if (error) throw error;
-        await fetchAllLocations();
+    const addLocation = async (
+        location: Omit<ShippingLocation, 'order_index'> & { order_index?: number },
+    ) => {
+        await createMut({
+            code: location.id,
+            name: location.name,
+            fee: location.fee,
+            is_active: location.is_active,
+            order_index: location.order_index ?? locations.length + 1,
+        });
     };
 
     const deleteLocation = async (id: string) => {
-        const { error } = await supabase
-            .from('shipping_locations')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-        await fetchAllLocations();
+        await deleteMut({ code: id });
     };
 
-    useEffect(() => {
-        fetchAllLocations();
-    }, []);
-
-    return { locations, loading, error, updateLocation, addLocation, deleteLocation, refetch: fetchAllLocations };
+    return {
+        locations,
+        loading,
+        error: null as string | null,
+        updateLocation,
+        addLocation,
+        deleteLocation,
+        refetch: () => {},
+    };
 };

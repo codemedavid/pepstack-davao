@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
+import { vi } from 'vitest';
 
-// Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
@@ -15,13 +15,10 @@ const localStorageMock = (() => {
 
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-// Mock window.alert
 window.alert = vi.fn();
 
-// Mock import.meta.env for Supabase
 Object.defineProperty(import.meta, 'env', {
   value: {
-    VITE_SUPABASE_URL: 'https://test.supabase.co',
-    VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+    VITE_CONVEX_URL: 'https://test.convex.cloud',
   },
 });

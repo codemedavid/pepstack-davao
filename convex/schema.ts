@@ -79,7 +79,10 @@ export default defineSchema({
     name: v.string(),
     trackingUrlTemplate: v.optional(v.string()),
     isActive: v.boolean(),
-  }).index("by_code", ["code"]),
+    sortOrder: v.optional(v.number()),
+  })
+    .index("by_code", ["code"])
+    .index("by_sortOrder", ["sortOrder"]),
 
   promoCodes: defineTable({
     code: v.string(),
@@ -161,6 +164,19 @@ export default defineSchema({
   })
     .index("by_category", ["category"])
     .index("by_orderIndex", ["orderIndex"]),
+
+  articles: defineTable({
+    title: v.string(),
+    preview: v.optional(v.string()),
+    content: v.string(),
+    coverImage: v.optional(v.string()),
+    author: v.string(),
+    publishedDate: v.string(),
+    displayOrder: v.number(),
+    isEnabled: v.boolean(),
+  })
+    .index("by_displayOrder", ["displayOrder"])
+    .index("by_enabled", ["isEnabled"]),
 
   protocols: defineTable({
     name: v.string(),

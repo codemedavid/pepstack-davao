@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import {
     Plus,
     Edit2,
@@ -40,7 +42,11 @@ interface ModalData {
 }
 
 export default function GuideManager() {
-    const [articles, setArticles] = useState<Article[]>([]);
+    const articlesQuery = useQuery(api.articles.list, {});
+    const articles = (articlesQuery ?? []) as Article[];
+    const createArticle = useMutation(api.articles.create);
+    const updateArticle = useMutation(api.articles.update);
+    const deleteArticleMut = useMutation(api.articles.remove);
     const [showModal, setShowModal] = useState(false);
     const [modalData, setModalData] = useState<ModalData>({
         title: '',
@@ -53,28 +59,6 @@ export default function GuideManager() {
         is_enabled: true
     });
     const [editingArticle, setEditingArticle] = useState<string | null>(null);
-
-    useEffect(() => {
-        fetchArticles();
-    }, []);
-
-    const fetchArticles = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('guide_topics')
-                .select('*')
-                .order('display_order', { ascending: true });
-
-            if (error) throw error;
-
-            if (data) {
-                setArticles(data);
-            }
-        } catch (error) {
-            console.error('Error fetching articles:', error);
-            alert('Failed to fetch articles');
-        }
-    };
 
     const openModal = (article?: Article) => {
         if (article) {
@@ -146,27 +130,12 @@ export default function GuideManager() {
             };
 
             if (editingArticle) {
-                // Update existing article
-                const { error } = await supabase
-                    .from('guide_topics')
-                    .update({
-                        ...articleData,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', editingArticle);
-
-                if (error) throw error;
+                await updateArticle({ id: editingArticle as Id<'articles'>, ...articleData });
             } else {
-                // Create new article
-                const { error } = await supabase
-                    .from('guide_topics')
-                    .insert(articleData);
-
-                if (error) throw error;
+                await createArticle(articleData);
             }
 
             closeModal();
-            fetchArticles();
         } catch (error) {
             console.error('Error saving article:', error);
             alert('Failed to save article');
@@ -179,14 +148,7 @@ export default function GuideManager() {
         }
 
         try {
-            const { error } = await supabase
-                .from('guide_topics')
-                .delete()
-                .eq('id', articleId);
-
-            if (error) throw error;
-
-            fetchArticles();
+            await deleteArticleMut({ id: articleId as Id<'articles'> });
         } catch (error) {
             console.error('Error deleting article:', error);
             alert('Failed to delete article');
@@ -195,14 +157,10 @@ export default function GuideManager() {
 
     const toggleEnabled = async (articleId: string, currentlyEnabled: boolean) => {
         try {
-            const { error } = await supabase
-                .from('guide_topics')
-                .update({ is_enabled: !currentlyEnabled, updated_at: new Date().toISOString() })
-                .eq('id', articleId);
-
-            if (error) throw error;
-
-            fetchArticles();
+            await updateArticle({
+                id: articleId as Id<'articles'>,
+                is_enabled: !currentlyEnabled,
+            });
         } catch (error) {
             console.error('Error toggling article:', error);
             alert('Failed to update article status');

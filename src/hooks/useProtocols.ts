@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 export interface Protocol {
     id: string;
@@ -13,100 +14,102 @@ export interface Protocol {
     sort_order: number;
     active: boolean;
     product_id?: string;
+    image_url?: string | null;
+    content_type?: string;
+    file_url?: string | null;
     created_at: string;
     updated_at: string;
 }
 
 export function useProtocols() {
-    const [protocols, setProtocols] = useState<Protocol[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const data = useQuery(api.protocols.list, {});
+    const createMut = useMutation(api.protocols.create);
+    const updateMut = useMutation(api.protocols.update);
+    const deleteMut = useMutation(api.protocols.remove);
 
-    const fetchProtocols = useCallback(async () => {
-        try {
-            setLoading(true);
-            const { data, error } = await supabase
-                .from('protocols')
-                .select('*')
-                .order('sort_order', { ascending: true });
-
-            if (error) throw error;
-            setProtocols(data || []);
-        } catch (err) {
-            console.error('Error fetching protocols:', err);
-            setError(err instanceof Error ? err.message : 'Failed to fetch protocols');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchProtocols();
-    }, [fetchProtocols]);
+    const protocols = (data ?? []) as Protocol[];
+    const loading = data === undefined;
 
     const addProtocol = async (protocol: Omit<Protocol, 'id' | 'created_at' | 'updated_at'>) => {
         try {
-            const { data, error } = await supabase
-                .from('protocols')
-                .insert(protocol)
-                .select()
-                .single();
-
-            if (error) throw error;
-            await fetchProtocols();
-            return { success: true, data };
+            const result = await createMut({
+                name: protocol.name,
+                category: protocol.category,
+                dosage: protocol.dosage,
+                frequency: protocol.frequency,
+                duration: protocol.duration,
+                notes: protocol.notes,
+                storage: protocol.storage,
+                sort_order: protocol.sort_order,
+                active: protocol.active,
+                product_id: protocol.product_id ? (protocol.product_id as Id<'products'>) : null,
+                image_url: protocol.image_url ?? null,
+                content_type: protocol.content_type ?? 'text',
+                file_url: protocol.file_url ?? null,
+            });
+            return { success: true as const, data: result };
         } catch (err) {
-            console.error('Error adding protocol:', err);
-            return { success: false, error: err instanceof Error ? err.message : 'Failed to add protocol' };
+            return {
+                success: false as const,
+                error: err instanceof Error ? err.message : 'Failed to add protocol',
+            };
         }
     };
 
     const updateProtocol = async (id: string, updates: Partial<Protocol>) => {
         try {
-            const { data, error } = await supabase
-                .from('protocols')
-                .update({ ...updates, updated_at: new Date().toISOString() })
-                .eq('id', id)
-                .select()
-                .single();
-
-            if (error) throw error;
-            await fetchProtocols();
-            return { success: true, data };
+            await updateMut({
+                id: id as Id<'protocols'>,
+                name: updates.name,
+                category: updates.category,
+                dosage: updates.dosage,
+                frequency: updates.frequency,
+                duration: updates.duration,
+                notes: updates.notes,
+                storage: updates.storage,
+                sort_order: updates.sort_order,
+                active: updates.active,
+                product_id:
+                    updates.product_id === undefined
+                        ? undefined
+                        : updates.product_id
+                          ? (updates.product_id as Id<'products'>)
+                          : null,
+                image_url: updates.image_url,
+                content_type: updates.content_type,
+                file_url: updates.file_url,
+            });
+            return { success: true as const };
         } catch (err) {
-            console.error('Error updating protocol:', err);
-            return { success: false, error: err instanceof Error ? err.message : 'Failed to update protocol' };
+            return {
+                success: false as const,
+                error: err instanceof Error ? err.message : 'Failed to update protocol',
+            };
         }
     };
 
     const deleteProtocol = async (id: string) => {
         try {
-            const { error } = await supabase
-                .from('protocols')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
-            await fetchProtocols();
-            return { success: true };
+            await deleteMut({ id: id as Id<'protocols'> });
+            return { success: true as const };
         } catch (err) {
-            console.error('Error deleting protocol:', err);
-            return { success: false, error: err instanceof Error ? err.message : 'Failed to delete protocol' };
+            return {
+                success: false as const,
+                error: err instanceof Error ? err.message : 'Failed to delete protocol',
+            };
         }
     };
 
-    const toggleActive = async (id: string, active: boolean) => {
-        return updateProtocol(id, { active });
-    };
+    const toggleActive = (id: string, active: boolean) => updateProtocol(id, { active });
 
     return {
         protocols,
         loading,
-        error,
-        fetchProtocols,
+        error: null as string | null,
+        fetchProtocols: async () => {},
         addProtocol,
         updateProtocol,
         deleteProtocol,
-        toggleActive
+        toggleActive,
     };
 }
