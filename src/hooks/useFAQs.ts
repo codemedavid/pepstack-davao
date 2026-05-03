@@ -1,7 +1,5 @@
-import { useMemo } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 export interface FAQItem {
     id: string;
@@ -155,7 +153,24 @@ const defaultFAQs: FAQItem[] = [
 ];
 
 export const useFAQs = () => {
-    const data = useQuery(api.faqs.list, { activeOnly: true });
+    const [data, setData] = useState<FAQItem[] | undefined>(undefined);
+
+    const refetch = useCallback(async () => {
+        const { data: rows, error } = await supabase
+            .from('faqs')
+            .select('*')
+            .eq('is_active', true)
+            .order('order_index', { ascending: true });
+        if (error) {
+            console.error('useFAQs refetch error', error);
+            setData([]);
+            return;
+        }
+        setData((rows ?? []) as FAQItem[]);
+    }, []);
+
+    useEffect(() => { refetch(); }, [refetch]);
+
     const loading = data === undefined;
     const faqs = useMemo<FAQItem[]>(() => {
         const list = (data ?? []) as FAQItem[];
@@ -165,43 +180,65 @@ export const useFAQs = () => {
         () => [...new Set(faqs.map((f) => f.category))],
         [faqs],
     );
-    return { faqs, categories, loading, error: null as string | null, refetch: () => {} };
+    return { faqs, categories, loading, error: null as string | null, refetch };
 };
 
 export const useFAQsAdmin = () => {
-    const data = useQuery(api.faqs.list, {});
-    const createMut = useMutation(api.faqs.create);
-    const updateMut = useMutation(api.faqs.update);
-    const deleteMut = useMutation(api.faqs.remove);
-    const seedMut = useMutation(api.faqs.seedMany);
+    const [data, setData] = useState<FAQItem[] | undefined>(undefined);
+
+    const refetch = useCallback(async () => {
+        const { data: rows, error } = await supabase
+            .from('faqs')
+            .select('*')
+            .order('order_index', { ascending: true });
+        if (error) {
+            console.error('useFAQsAdmin refetch error', error);
+            setData([]);
+            return;
+        }
+        setData((rows ?? []) as FAQItem[]);
+    }, []);
+
+    useEffect(() => { refetch(); }, [refetch]);
 
     const list = (data ?? []) as FAQItem[];
     const usingDefaults = data !== undefined && list.length === 0;
     const faqs = list.length > 0 ? list : defaultFAQs;
     const loading = data === undefined;
 
-    const addFAQ = async (faq: Omit<FAQItem, 'id' | 'created_at' | 'updated_at'>) =>
-        await createMut({
-            question: faq.question,
-            answer: faq.answer,
-            category: faq.category,
-            order_index: faq.order_index,
-            is_active: faq.is_active,
-        });
+    const addFAQ = async (faq: Omit<FAQItem, 'id' | 'created_at' | 'updated_at'>) => {
+        const { data: row, error } = await supabase
+            .from('faqs')
+            .insert({
+                question: faq.question,
+                answer: faq.answer,
+                category: faq.category,
+                order_index: faq.order_index,
+                is_active: faq.is_active,
+            })
+            .select()
+            .single();
+        if (error) throw new Error(error.message);
+        await refetch();
+        return row;
+    };
 
     const updateFAQ = async (id: string, updates: Partial<FAQItem>) => {
-        await updateMut({
-            id: id as Id<'faqs'>,
-            question: updates.question,
-            answer: updates.answer,
-            category: updates.category,
-            order_index: updates.order_index,
-            is_active: updates.is_active,
-        });
+        const patch: Record<string, unknown> = {};
+        if (updates.question !== undefined) patch.question = updates.question;
+        if (updates.answer !== undefined) patch.answer = updates.answer;
+        if (updates.category !== undefined) patch.category = updates.category;
+        if (updates.order_index !== undefined) patch.order_index = updates.order_index;
+        if (updates.is_active !== undefined) patch.is_active = updates.is_active;
+        const { error } = await supabase.from('faqs').update(patch).eq('id', id);
+        if (error) throw new Error(error.message);
+        await refetch();
     };
 
     const deleteFAQ = async (id: string) => {
-        await deleteMut({ id: id as Id<'faqs'> });
+        const { error } = await supabase.from('faqs').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await refetch();
     };
 
     const seedDefaults = async () => {
@@ -212,7 +249,9 @@ export const useFAQsAdmin = () => {
             order_index,
             is_active,
         }));
-        await seedMut({ faqs: payload });
+        const { error } = await supabase.from('faqs').insert(payload);
+        if (error) throw new Error(error.message);
+        await refetch();
     };
 
     return {
@@ -224,6 +263,6 @@ export const useFAQsAdmin = () => {
         updateFAQ,
         deleteFAQ,
         seedDefaults,
-        refetch: () => {},
+        refetch,
     };
 };

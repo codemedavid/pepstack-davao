@@ -7,45 +7,45 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Peptijene - Soft Modern Biotech Theme
-        'theme-bg': '#FFFFFF',           // Pure White
-        'theme-text': '#2B2B2B',         // Dark Text
+        // Pepstack Davao - Pastel Pink Theme
+        'theme-bg': '#FFF7FA',           // Soft pastel background
+        'theme-text': '#5C2B3E',         // Soft plum text
 
-        // Primary Palette - Pink
+        // Primary Palette - Pastel Pink
         'brand': {
-          DEFAULT: '#F06292', // Primary Pink
-          50: '#FFF0F3',      // Soft Pink Background
-          100: '#FCE4EC',
-          200: '#F8BBD0',     // Light Pink
-          300: '#F48FB1',     // Medium Pink
-          400: '#F06292',     // Pink
-          500: '#EC407A',     // Primary Pink
-          600: '#E91E78',
-          700: '#C2185B',     // Deep Pink
-          800: '#AD1457',
-          900: '#880E4F',
+          DEFAULT: '#FFB6C9', // Pastel pink
+          50: '#FFF5F8',      // Almost-white pink
+          100: '#FFEAF1',     // Very soft pastel
+          200: '#FFD6E3',     // Light pastel pink
+          300: '#FFC2D5',     // Pastel pink
+          400: '#FFB6C9',     // Primary pastel pink
+          500: '#FF9DB8',     // Soft rose
+          600: '#FF85A8',     // Brighter rose accent
+          700: '#F56991',     // Deeper rose for hover
+          800: '#D9527B',     // Accent
+          900: '#B23E62',     // Deep accent text
         },
 
-        // Secondary & Neutral
+        // Secondary & Neutral - warm soft pinks for backgrounds, soft plum text
         'charcoal': {
-          DEFAULT: '#2B2B2B',
-          50: '#FFF0F3',      // Soft Pink Tint
-          100: '#FCE4EC',
-          200: '#F8BBD0',
-          300: '#B0B0B0',
-          400: '#858585',
-          500: '#595959',
-          600: '#4D4D4D',
-          700: '#3D3D3D',
-          800: '#2E2E2E',
-          900: '#2B2B2B',     // Dark Text
+          DEFAULT: '#5C2B3E',
+          50: '#FFF5F8',      // Pastel pink tint background
+          100: '#FFEAF1',
+          200: '#FFD6E3',
+          300: '#D9B5C2',
+          400: '#B08899',
+          500: '#8A6273',
+          600: '#6E4B5B',
+          700: '#5C2B3E',
+          800: '#4A2333',
+          900: '#3D1B29',     // Soft plum dark text
         },
 
         // Backgrounds & Accents
-        'cream': '#FFFFFF',
-        'blush-light': '#FFF0F3',   // Soft Pink Background
-        'warm-white': '#FFF0F3',
-        'gold': '#C8A46B',          // Gold Accent
+        'cream': '#FFF7FA',
+        'blush-light': '#FFF0F5',   // Pastel pink background
+        'warm-white': '#FFF7FA',
+        'gold': '#E8B5C4',          // Soft pink accent (replacing gold)
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],

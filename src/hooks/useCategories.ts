@@ -1,7 +1,5 @@
-import { useMemo } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 export interface Category {
   id: string;
@@ -14,11 +12,25 @@ export interface Category {
 }
 
 export const useCategories = () => {
-  const data = useQuery(api.categories.list, { activeOnly: true });
-  const createMut = useMutation(api.categories.create);
-  const updateMut = useMutation(api.categories.update);
-  const deleteMut = useMutation(api.categories.remove);
-  const reorderMut = useMutation(api.categories.reorder);
+  const [data, setData] = useState<Category[] | undefined>(undefined);
+
+  const refetch = useCallback(async () => {
+    const { data: rows, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('active', true)
+      .order('sort_order', { ascending: true });
+    if (error) {
+      console.error('useCategories refetch error', error);
+      setData([]);
+      return;
+    }
+    setData((rows ?? []) as Category[]);
+  }, []);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   const loading = data === undefined;
 
@@ -38,34 +50,48 @@ export const useCategories = () => {
   }, [data]);
 
   const addCategory = async (category: Omit<Category, 'created_at' | 'updated_at'>) => {
-    return await createMut({
+    const payload: any = {
       name: category.name,
       icon: category.icon,
       sort_order: category.sort_order,
       active: category.active,
-    });
+    };
+    if (category.id) payload.id = category.id;
+    const { data: row, error } = await supabase
+      .from('categories')
+      .insert(payload)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    await refetch();
+    return row;
   };
 
   const updateCategory = async (id: string, updates: Partial<Category>) => {
-    await updateMut({
-      id: id as Id<'categories'>,
-      name: updates.name,
-      icon: updates.icon,
-      sort_order: updates.sort_order,
-      active: updates.active,
-    });
+    const patch: Record<string, unknown> = {};
+    if (updates.name !== undefined) patch.name = updates.name;
+    if (updates.icon !== undefined) patch.icon = updates.icon;
+    if (updates.sort_order !== undefined) patch.sort_order = updates.sort_order;
+    if (updates.active !== undefined) patch.active = updates.active;
+    const { error } = await supabase.from('categories').update(patch).eq('id', id);
+    if (error) throw new Error(error.message);
+    await refetch();
   };
 
   const deleteCategory = async (id: string) => {
-    await deleteMut({ id: id as Id<'categories'> });
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    await refetch();
   };
 
   const reorderCategories = async (reordered: Category[]) => {
-    await reorderMut({
-      orderedIds: reordered
-        .filter((c) => c.id !== 'all')
-        .map((c) => c.id as Id<'categories'>),
-    });
+    const filtered = reordered.filter((c) => c.id !== 'all');
+    await Promise.all(
+      filtered.map((c, idx) =>
+        supabase.from('categories').update({ sort_order: idx + 1 }).eq('id', c.id),
+      ),
+    );
+    await refetch();
   };
 
   return {
@@ -76,6 +102,6 @@ export const useCategories = () => {
     updateCategory,
     deleteCategory,
     reorderCategories,
-    refetch: () => {},
+    refetch,
   };
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, FlaskConical, Mail, MapPin, Instagram, Facebook, HelpCircle, FileText, BookOpen, Tag } from 'lucide-react';
+import { Truck, FlaskConical, HelpCircle, FileText, BookOpen } from 'lucide-react';
 import { useCOAPageSetting } from '../hooks/useCOAPageSetting';
 
 const Footer: React.FC = () => {
@@ -9,61 +9,18 @@ const Footer: React.FC = () => {
   return (
     <footer className="bg-charcoal-900 pt-16 pb-8 border-t border-charcoal-800">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
 
           {/* Brand Section */}
           <div className="flex flex-col items-center md:items-start gap-4">
-            <span className="text-2xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-400 to-brand-200 bg-clip-text text-transparent">
-              Peptijene
-            </span>
+            <img
+              src="/logo.png?v=3"
+              alt="Pepstack Davao"
+              className="h-24 w-auto object-contain bg-white/90 rounded-2xl p-2"
+            />
             <p className="text-charcoal-400 text-sm max-w-xs text-center md:text-left">
-              Advanced peptide solutions designed for innovation and research. Lab-tested, high-purity formulations you can trust.
+              Pepstack Davao — advanced peptide solutions designed for innovation and research. Lab-tested, high-purity formulations you can trust.
             </p>
-          </div>
-
-          {/* Contact Us */}
-          <div className="flex flex-col items-center md:items-start gap-3">
-            <h3 className="text-white font-semibold text-sm uppercase tracking-wider mb-2">Contact Us</h3>
-            <a
-              href="mailto:Reechsendin@gmail.com"
-              className="text-charcoal-300 hover:text-brand-400 transition-colors flex items-center gap-2 text-sm"
-            >
-              <Mail className="w-4 h-4" />
-              Reechsendin@gmail.com
-            </a>
-            <div className="text-charcoal-300 flex items-center gap-2 text-sm">
-              <MapPin className="w-4 h-4" />
-              Marilao, Bulacan
-            </div>
-            <a
-              href="https://www.facebook.com/share/1CJZ5FTx2N/?mibextid=wwXIfr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-charcoal-300 hover:text-brand-400 transition-colors flex items-center gap-2 text-sm"
-            >
-              <Facebook className="w-4 h-4" />
-              Peptijene
-            </a>
-            <a
-              href="https://www.instagram.com/biorichscience"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-charcoal-300 hover:text-brand-400 transition-colors flex items-center gap-2 text-sm"
-            >
-              <Instagram className="w-4 h-4" />
-              @biorichscience
-            </a>
-            <a
-              href="https://www.tiktok.com/@biorich2026"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-charcoal-300 hover:text-brand-400 transition-colors flex items-center gap-2 text-sm"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.69a8.28 8.28 0 004.76 1.5v-3.5a4.84 4.84 0 01-1-.14z"/>
-              </svg>
-              @biorich2026
-            </a>
           </div>
 
           {/* Quick Links */}
@@ -117,7 +74,7 @@ const Footer: React.FC = () => {
         <div className="text-center">
           <p className="text-xs text-charcoal-500 flex items-center justify-center gap-1">
             Made with
-            © {currentYear} Peptijene.
+            © {currentYear} Pepstack Davao.
           </p>
         </div>
       </div>

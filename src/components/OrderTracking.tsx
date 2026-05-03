@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Package, Truck, CheckCircle, Clock, AlertCircle, ArrowRight, ExternalLink, ArrowLeft } from 'lucide-react';
-import { ConvexHttpClient } from 'convex/browser';
-import { api } from '../../convex/_generated/api';
-
-const httpClient = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
+import { supabase } from '../lib/supabase';
 
 interface TrackingOrder {
     id: string;
@@ -41,11 +38,17 @@ const OrderTracking: React.FC = () => {
         setHasSearched(true);
 
         try {
-            const data = await httpClient.query(api.orders.getDetailsForTracking, {
-                orderInput: orderId.trim(),
+            const { data, error: rpcError } = await supabase.rpc('get_order_details', {
+                p_order_id: orderId.trim(),
             });
-            if (data) {
-                setOrder(data as TrackingOrder);
+            if (rpcError) {
+                console.error('RPC error:', rpcError);
+                setError('An error occurred while fetching your order. Please try again.');
+                return;
+            }
+            const found = Array.isArray(data) ? data[0] : data;
+            if (found) {
+                setOrder(found as TrackingOrder);
             } else {
                 setError('Order not found. Please check your Order ID and try again.');
             }
@@ -124,6 +127,61 @@ const OrderTracking: React.FC = () => {
                         <p>{error}</p>
                     </div>
                 )}
+
+                {/* J&T Delivery Days Reference */}
+                <div className="bg-gradient-to-br from-pink-50 to-pink-100/60 rounded-2xl shadow-lg border-2 border-pink-200 overflow-hidden mb-8">
+                    <div className="bg-gradient-to-r from-pink-400 to-pink-500 px-6 py-5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Truck className="w-7 h-7 text-white" />
+                            <div>
+                                <h2 className="text-xl md:text-2xl font-bold text-white">J&T Delivery Days</h2>
+                                <p className="text-pink-50 text-xs md:text-sm">Estimated delivery time from Mindanao</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="p-4 md:p-6">
+                        <div className="overflow-hidden rounded-xl border border-pink-200 bg-white">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="bg-pink-100 text-pink-700">
+                                        <th className="px-4 py-3 text-sm font-bold uppercase tracking-wider">From Mindanao</th>
+                                        <th className="px-4 py-3 text-sm font-bold uppercase tracking-wider text-center">No. of Days</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-pink-100">
+                                    {[
+                                        { region: 'NCR', days: '4–6' },
+                                        { region: 'South Luzon', days: '4–6' },
+                                        { region: 'North Luzon', days: '4–6' },
+                                        { region: 'Visayas', days: '3–5' },
+                                        { region: 'Mindanao', days: '2–3' },
+                                        { region: 'Puerto Princesa', days: '6–8' },
+                                        { region: 'Batanes', days: '12–14' },
+                                        { region: 'Coron', days: '12–14' },
+                                        { region: 'Luzon Island: Marinduque, Masbate, Mindoro, Catanduanes', days: '6–8' },
+                                    ].map((row, idx) => (
+                                        <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-pink-50/40'}>
+                                            <td className="px-4 py-3 text-sm md:text-base text-navy-900 font-medium">
+                                                <span className="inline-flex items-start gap-2">
+                                                    <span className="text-pink-500 mt-0.5">♥</span>
+                                                    <span>{row.region}</span>
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <span className="inline-block px-3 py-1 rounded-full bg-pink-100 text-pink-700 font-bold text-sm md:text-base">
+                                                    {row.days}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p className="text-center text-pink-600 text-sm font-medium mt-4 italic">
+                            ♥ From Mindanao, with care! ♥
+                        </p>
+                    </div>
+                </div>
 
                 {hasSearched && order && (
                     <div className="space-y-6 animate-fade-in">

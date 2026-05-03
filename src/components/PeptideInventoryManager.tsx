@@ -1,11 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, Package, TrendingUp, AlertTriangle, Search, Edit, Trash2, Plus, Download, RefreshCw, Layers } from 'lucide-react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
 import type { Product } from '../types';
 import { useMenu } from '../hooks/useMenu';
 import { useCategories } from '../hooks/useCategories';
+import { supabase } from '../lib/supabase';
 
 interface PeptideInventoryManagerProps {
   onBack: () => void;
@@ -14,15 +12,27 @@ interface PeptideInventoryManagerProps {
 const PeptideInventoryManager: React.FC<PeptideInventoryManagerProps> = ({ onBack }) => {
   const { products, loading, refreshProducts, deleteProduct, deleteVariation } = useMenu();
   const { categories } = useCategories();
-  const ordersData = useQuery(api.orders.listForSales, {});
-  const orders = (ordersData ?? []) as Array<{
+  const [orders, setOrders] = useState<Array<{
     total_price: number;
     shipping_fee: number;
     order_items: any;
     order_status: string;
-  }>;
-  const updateProductStock = useMutation(api.products.updateStock);
-  const updateVariationStock = useMutation(api.products.updateVariationStock);
+  }>>([]);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('total_price, shipping_fee, order_items, order_status, payment_status')
+        .in('order_status', ['confirmed', 'processing', 'shipped', 'delivered'])
+        .eq('payment_status', 'paid');
+      if (error) {
+        console.error('Failed to load orders for sales:', error);
+        return;
+      }
+      setOrders((data ?? []) as any);
+    })();
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
@@ -136,16 +146,19 @@ const PeptideInventoryManager: React.FC<PeptideInventoryManagerProps> = ({ onBac
   const handleUpdateStock = async (productId: string, variationId: string | null, newStock: number) => {
     try {
       if (variationId) {
-        await updateVariationStock({
-          id: variationId as Id<'productVariations'>,
-          stock_quantity: newStock,
-        });
+        const { error } = await supabase
+          .from('product_variations')
+          .update({ stock_quantity: newStock })
+          .eq('id', variationId);
+        if (error) throw error;
       } else {
-        await updateProductStock({
-          id: productId as Id<'products'>,
-          stock_quantity: newStock,
-        });
+        const { error } = await supabase
+          .from('products')
+          .update({ stock_quantity: newStock })
+          .eq('id', productId);
+        if (error) throw error;
       }
+      await refreshProducts();
       alert('Stock updated successfully!');
     } catch (error) {
       console.error('Error updating stock:', error);

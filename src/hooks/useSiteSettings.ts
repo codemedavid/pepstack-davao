@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import type { SiteSettings } from '../types';
 
 const DEFAULTS: SiteSettings = {
@@ -23,10 +22,27 @@ const DEFAULTS: SiteSettings = {
   contact_telegram_link: '',
 };
 
+interface SiteSettingRow {
+  id: string;
+  value: string;
+  type?: string;
+  description?: string | null;
+}
+
 export const useSiteSettings = () => {
-  const data = useQuery(api.siteSettings.list, {});
-  const upsertOne = useMutation(api.siteSettings.upsert);
-  const upsertMany = useMutation(api.siteSettings.upsertMany);
+  const [data, setData] = useState<SiteSettingRow[] | undefined>(undefined);
+
+  const refetch = useCallback(async () => {
+    const { data: rows, error } = await supabase.from('site_settings').select('*');
+    if (error) {
+      console.error('useSiteSettings refetch error', error);
+      setData([]);
+      return;
+    }
+    setData((rows ?? []) as SiteSettingRow[]);
+  }, []);
+
+  useEffect(() => { refetch(); }, [refetch]);
 
   const loading = data === undefined;
 
@@ -43,16 +59,25 @@ export const useSiteSettings = () => {
   }, [data, loading]);
 
   const updateSiteSetting = async (id: string, value: string) => {
-    await upsertOne({ key: id, value });
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert({ id, value, type: 'text' }, { onConflict: 'id' });
+    if (error) throw new Error(error.message);
+    await refetch();
   };
 
   const updateSiteSettings = async (updates: Partial<SiteSettings>) => {
     const entries = Object.entries(updates).map(([key, value]) => ({
-      key,
+      id: key,
       value: String(value),
-      type: 'text' as const,
+      type: 'text',
     }));
-    await upsertMany({ entries });
+    if (entries.length === 0) return;
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert(entries, { onConflict: 'id' });
+    if (error) throw new Error(error.message);
+    await refetch();
   };
 
   return {
@@ -61,6 +86,6 @@ export const useSiteSettings = () => {
     error: null as string | null,
     updateSiteSetting,
     updateSiteSettings,
-    refetch: () => {},
+    refetch,
   };
 };

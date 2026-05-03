@@ -1,10 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { ArrowLeft, Package, CheckCircle, XCircle, Clock, Truck, AlertCircle, Search, RefreshCw, Eye, MessageCircle, Image as ImageIcon } from 'lucide-react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
 import { useMenu } from '../hooks/useMenu';
 import { useCouriers } from '../hooks/useCouriers';
+import { supabase } from '../lib/supabase';
 
 interface OrderItem {
   product_id: string;
@@ -54,12 +52,8 @@ interface OrdersManagerProps {
 }
 
 const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
-  const ordersData = useQuery(api.orders.list, {});
-  const orders = (ordersData ?? []) as Order[];
-  const loading = ordersData === undefined;
-  const confirmOrderMut = useMutation(api.orders.confirmOrder);
-  const updateStatusMut = useMutation(api.orders.updateStatus);
-  const updateTrackingMut = useMutation(api.orders.updateTracking);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -68,9 +62,106 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { refreshProducts } = useMenu();
 
+  const refetchOrders = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Orders load error', error);
+      setOrders([]);
+    } else {
+      setOrders((data ?? []) as Order[]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { refetchOrders(); }, [refetchOrders]);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    await refetchOrders();
     setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  const performConfirmOrder = async (orderId: string) => {
+    // Fetch the order, validate stock, deduct stock, update order_status to 'confirmed' & payment_status to 'paid'.
+    const { data: orderRow, error: getErr } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+    if (getErr || !orderRow) throw new Error(getErr?.message || 'Order not found.');
+
+    const items: Array<{
+      product_id?: string;
+      variation_id?: string | null;
+      product_name: string;
+      variation_name?: string | null;
+      quantity: number;
+    }> = orderRow.order_items ?? [];
+
+    // Validate stock
+    for (const item of items) {
+      const qty = item.quantity ?? 0;
+      if (item.variation_id) {
+        const { data: v } = await supabase
+          .from('product_variations')
+          .select('stock_quantity')
+          .eq('id', item.variation_id)
+          .maybeSingle();
+        if (!v) throw new Error(`Variation "${item.variation_name ?? ''}" not found.`);
+        if ((v.stock_quantity ?? 0) < qty) {
+          throw new Error(`Insufficient stock for ${item.product_name} ${item.variation_name ?? ''}. Available: ${v.stock_quantity}, Required: ${qty}`);
+        }
+      } else if (item.product_id) {
+        const { data: p } = await supabase
+          .from('products')
+          .select('stock_quantity')
+          .eq('id', item.product_id)
+          .maybeSingle();
+        if (!p) throw new Error(`Product "${item.product_name}" not found.`);
+        if ((p.stock_quantity ?? 0) < qty) {
+          throw new Error(`Insufficient stock for ${item.product_name}. Available: ${p.stock_quantity}, Required: ${qty}`);
+        }
+      }
+    }
+
+    // Deduct stock
+    for (const item of items) {
+      const qty = item.quantity ?? 0;
+      if (item.variation_id) {
+        const { data: v } = await supabase
+          .from('product_variations')
+          .select('stock_quantity')
+          .eq('id', item.variation_id)
+          .maybeSingle();
+        if (v) {
+          await supabase
+            .from('product_variations')
+            .update({ stock_quantity: Math.max(0, (v.stock_quantity ?? 0) - qty) })
+            .eq('id', item.variation_id);
+        }
+      } else if (item.product_id) {
+        const { data: p } = await supabase
+          .from('products')
+          .select('stock_quantity')
+          .eq('id', item.product_id)
+          .maybeSingle();
+        if (p) {
+          await supabase
+            .from('products')
+            .update({ stock_quantity: Math.max(0, (p.stock_quantity ?? 0) - qty) })
+            .eq('id', item.product_id);
+        }
+      }
+    }
+
+    const { error: updErr } = await supabase
+      .from('orders')
+      .update({ order_status: 'confirmed', payment_status: 'paid', updated_at: new Date().toISOString() })
+      .eq('id', orderId);
+    if (updErr) throw new Error(updErr.message);
   };
 
   const handleConfirmOrder = async (order: Order) => {
@@ -80,8 +171,9 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
 
     try {
       setIsProcessing(true);
-      await confirmOrderMut({ id: order.id as Id<'orders'> });
+      await performConfirmOrder(order.id);
       await refreshProducts();
+      await refetchOrders();
       window.dispatchEvent(new CustomEvent('orderConfirmed'));
       alert(`Order confirmed! Stock has been deducted from inventory.`);
       setSelectedOrder(null);
@@ -96,7 +188,12 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       setIsProcessing(true);
-      await updateStatusMut({ id: orderId as Id<'orders'>, order_status: newStatus });
+      const { error } = await supabase
+        .from('orders')
+        .update({ order_status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', orderId);
+      if (error) throw error;
+      await refetchOrders();
       if (selectedOrder?.id === orderId) {
         setSelectedOrder({ ...selectedOrder, order_status: newStatus });
       }
@@ -111,12 +208,17 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
   const handleSaveTracking = async (orderId: string, trackingNumber: string, shippingProvider: string, shippingNote: string) => {
     try {
       setIsProcessing(true);
-      await updateTrackingMut({
-        id: orderId as Id<'orders'>,
-        tracking_number: trackingNumber || null,
-        shipping_provider: shippingProvider || 'jnt',
-        shipping_note: shippingNote || null,
-      });
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          tracking_number: trackingNumber || null,
+          shipping_provider: shippingProvider || 'jnt',
+          shipping_note: shippingNote || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', orderId);
+      if (error) throw error;
+      await refetchOrders();
       if (selectedOrder?.id === orderId) {
         setSelectedOrder({
           ...selectedOrder,

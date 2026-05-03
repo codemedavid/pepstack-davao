@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Menu, X, FlaskConical, Truck, HelpCircle, FileText, BookOpen } from 'lucide-react';
+import { ShoppingCart, Menu, X, FlaskConical, Truck, HelpCircle, FileText, BookOpen, MessageCircle, ExternalLink } from 'lucide-react';
 import { useCOAPageSetting } from '../hooks/useCOAPageSetting';
 
 interface HeaderProps {
@@ -11,6 +11,8 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ cartItemsCount, onCartClick, onMenuClick }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { coaPageEnabled } = useCOAPageSetting();
+  const communityLink = 'https://chat.whatsapp.com/EAM1VdHd7ni0S2a3F9dHaV';
+  const communityBannerItems = [0, 1];
 
   return (
     <>
@@ -22,9 +24,11 @@ const Header: React.FC<HeaderProps> = ({ cartItemsCount, onCartClick, onMenuClic
               onClick={() => { onMenuClick(); setMobileMenuOpen(false); }}
               className="flex items-center hover:opacity-90 transition-opacity"
             >
-              <span className="text-2xl sm:text-3xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
-                Peptijene
-              </span>
+              <img
+                src="/logo.png?v=3"
+                alt="Pepstack Davao"
+                className="h-12 sm:h-14 w-auto object-contain"
+              />
             </button>
 
             {/* Right Side Navigation */}
@@ -98,6 +102,31 @@ const Header: React.FC<HeaderProps> = ({ cartItemsCount, onCartClick, onMenuClic
             </div>
           </div>
         </div>
+
+        <a
+          href={communityLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Join the Pepstack Davao WhatsApp community"
+          className="community-banner-link block overflow-hidden bg-gradient-to-r from-brand-500 via-[#FF9DB8] to-brand-400 text-white border-t border-white/30 shadow-sm"
+        >
+          <div className="community-banner-track flex w-max items-center py-2">
+            {communityBannerItems.map((item) => (
+              <div
+                key={item}
+                aria-hidden={item === 1}
+                className="flex shrink-0 items-center gap-3 px-5 sm:px-8 text-sm sm:text-base font-semibold"
+              >
+                <MessageCircle className="h-5 w-5 shrink-0" />
+                <span className="whitespace-nowrap">Join our Pepstack Davao WhatsApp community</span>
+                <span className="hidden sm:inline whitespace-nowrap text-white/85 font-medium">
+                  Updates, support, and product drops
+                </span>
+                <ExternalLink className="h-4 w-4 shrink-0" />
+              </div>
+            ))}
+          </div>
+        </a>
       </header>
 
       {/* Mobile Navigation Menu */}
@@ -117,9 +146,11 @@ const Header: React.FC<HeaderProps> = ({ cartItemsCount, onCartClick, onMenuClic
             {/* Drawer Header */}
             <div className="flex items-center justify-between p-5 border-b border-brand-100">
               <div className="flex items-center gap-3">
-                <span className="text-xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
-                  Peptijene
-                </span>
+                <img
+                  src="/logo.png?v=3"
+                  alt="Pepstack Davao"
+                  className="h-10 w-auto object-contain"
+                />
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}

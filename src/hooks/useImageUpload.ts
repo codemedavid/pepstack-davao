@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { ConvexHttpClient } from 'convex/browser';
-import type { Id } from '../../convex/_generated/dataModel';
+import { supabase } from '../lib/supabase';
 
 const VALID_EXTENSIONS = [
   'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tiff', 'tif',
@@ -26,12 +23,10 @@ const MIME_BY_EXT: Record<string, string> = {
   avif: 'image/avif',
 };
 
-const httpClient = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
-
 export const useImageUpload = (_folder: string = 'menu-images') => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const bucket = _folder;
 
   const uploadImage = async (file: File): Promise<string> => {
     let progressInterval: ReturnType<typeof setInterval> | null = null;
@@ -60,22 +55,18 @@ export const useImageUpload = (_folder: string = 'menu-images') => {
         setUploadProgress((p) => (p >= 90 ? 90 : p + 10));
       }, 100);
 
-      // Read file once to avoid Safari/iOS losing the File reference mid-upload
-      const arrayBuffer = await file.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: contentType });
+      const safeExt = ext || 'jpg';
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExt}`;
 
-      const uploadUrl = await generateUploadUrl();
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': contentType },
-        body: blob,
-      });
-      if (!res.ok) {
-        throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+      const { error: uploadErr } = await supabase.storage
+        .from(bucket)
+        .upload(path, file, { contentType, upsert: true });
+      if (uploadErr) {
+        throw new Error(`Upload failed: ${uploadErr.message}`);
       }
-      const { storageId } = (await res.json()) as { storageId: Id<'_storage'> };
 
-      const publicUrl = await httpClient.query(api.files.getUrl, { storageId });
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+      const publicUrl = data?.publicUrl;
       if (!publicUrl) throw new Error('Upload succeeded but URL could not be retrieved.');
 
       setUploadProgress(100);
@@ -88,9 +79,9 @@ export const useImageUpload = (_folder: string = 'menu-images') => {
   };
 
   const deleteImage = async (_imageUrl: string): Promise<void> => {
-    // Convex storage IDs aren't stored on entities (we only keep the public URL),
-    // so deleting by URL is a no-op. Files become orphaned when a record is removed
-    // but don't block functionality. Add a storageId column if reclamation is needed.
+    // No-op: we only store the public URL, so reverse-mapping to a storage path
+    // would require parsing the URL. Files become orphaned when a record is removed
+    // but don't block functionality.
   };
 
   return {

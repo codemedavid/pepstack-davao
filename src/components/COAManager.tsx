@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2, Save, X, Shield, ExternalLink, Sparkles, ArrowLeft } from 'lucide-react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import { supabase } from '../lib/supabase';
 import ImageUpload from './ImageUpload';
 
 interface COAManagerProps {
@@ -25,17 +23,37 @@ interface COAReport {
 }
 
 const COAManager: React.FC<COAManagerProps> = ({ onBack }) => {
-  const reportsData = useQuery(api.coaReports.list, {});
-  const coaReports = (reportsData ?? []) as COAReport[];
-  const loading = reportsData === undefined;
-  const createReport = useMutation(api.coaReports.create);
-  const updateReport = useMutation(api.coaReports.update);
-  const deleteReport = useMutation(api.coaReports.remove);
+  const [coaReports, setCoaReports] = useState<COAReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [coaPageEnabled, setCoaPageEnabled] = useState<boolean>(true);
 
-  const coaSetting = useQuery(api.siteSettings.get, { key: 'coa_page_enabled' });
-  const upsertSetting = useMutation(api.siteSettings.upsert);
-  const coaPageEnabled =
-    coaSetting === undefined || coaSetting === null ? true : coaSetting.value === 'true';
+  const refetchReports = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('coa_reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('COA reports load error', error);
+      setCoaReports([]);
+    } else {
+      setCoaReports((data ?? []) as COAReport[]);
+    }
+    setLoading(false);
+  }, []);
+
+  const refetchSetting = useCallback(async () => {
+    const { data } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('id', 'coa_page_enabled')
+      .maybeSingle();
+    setCoaPageEnabled(data ? String(data.value) === 'true' : true);
+  }, []);
+
+  useEffect(() => {
+    refetchReports();
+    refetchSetting();
+  }, [refetchReports, refetchSetting]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -55,12 +73,19 @@ const COAManager: React.FC<COAManagerProps> = ({ onBack }) => {
 
   const toggleCOAPage = async (enabled: boolean) => {
     try {
-      await upsertSetting({
-        key: 'coa_page_enabled',
-        value: enabled ? 'true' : 'false',
-        type: 'boolean',
-        description: 'Enable or disable the COA page on the website',
-      });
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            id: 'coa_page_enabled',
+            value: enabled ? 'true' : 'false',
+            type: 'boolean',
+            description: 'Enable or disable the COA page on the website',
+          },
+          { onConflict: 'id' },
+        );
+      if (error) throw error;
+      await refetchSetting();
       alert(enabled ? '✅ COA page is now visible on the website' : '❌ COA page is now hidden from the website');
     } catch (error: any) {
       console.error('Error updating COA page setting:', error);
@@ -85,12 +110,15 @@ const COAManager: React.FC<COAManagerProps> = ({ onBack }) => {
         laboratory: formData.laboratory,
       };
       if (editingId) {
-        await updateReport({ id: editingId as Id<'coaReports'>, ...payload });
+        const { error } = await supabase.from('coa_reports').update(payload).eq('id', editingId);
+        if (error) throw error;
         alert('✅ COA report updated successfully!');
       } else {
-        await createReport(payload);
+        const { error } = await supabase.from('coa_reports').insert(payload);
+        if (error) throw error;
         alert('✅ COA report added successfully!');
       }
+      await refetchReports();
       setEditingId(null);
       setIsAdding(false);
       resetForm();
@@ -103,7 +131,9 @@ const COAManager: React.FC<COAManagerProps> = ({ onBack }) => {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this COA report?')) return;
     try {
-      await deleteReport({ id: id as Id<'coaReports'> });
+      const { error } = await supabase.from('coa_reports').delete().eq('id', id);
+      if (error) throw error;
+      await refetchReports();
       alert('✅ COA report deleted successfully!');
     } catch (error) {
       console.error('Error deleting COA report:', error);

@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import {
     Plus,
     Edit2,
@@ -42,11 +40,23 @@ interface ModalData {
 }
 
 export default function GuideManager() {
-    const articlesQuery = useQuery(api.articles.list, {});
-    const articles = (articlesQuery ?? []) as Article[];
-    const createArticle = useMutation(api.articles.create);
-    const updateArticle = useMutation(api.articles.update);
-    const deleteArticleMut = useMutation(api.articles.remove);
+    const [articles, setArticles] = useState<Article[]>([]);
+
+    const refetch = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('guide_topics')
+            .select('*')
+            .order('display_order', { ascending: true });
+        if (error) {
+            console.error('articles load error', error);
+            setArticles([]);
+        } else {
+            setArticles((data ?? []) as Article[]);
+        }
+    }, []);
+
+    useEffect(() => { refetch(); }, [refetch]);
+
     const [showModal, setShowModal] = useState(false);
     const [modalData, setModalData] = useState<ModalData>({
         title: '',
@@ -130,10 +140,13 @@ export default function GuideManager() {
             };
 
             if (editingArticle) {
-                await updateArticle({ id: editingArticle as Id<'articles'>, ...articleData });
+                const { error } = await supabase.from('guide_topics').update(articleData).eq('id', editingArticle);
+                if (error) throw error;
             } else {
-                await createArticle(articleData);
+                const { error } = await supabase.from('guide_topics').insert(articleData);
+                if (error) throw error;
             }
+            await refetch();
 
             closeModal();
         } catch (error) {
@@ -148,7 +161,9 @@ export default function GuideManager() {
         }
 
         try {
-            await deleteArticleMut({ id: articleId as Id<'articles'> });
+            const { error } = await supabase.from('guide_topics').delete().eq('id', articleId);
+            if (error) throw error;
+            await refetch();
         } catch (error) {
             console.error('Error deleting article:', error);
             alert('Failed to delete article');
@@ -157,10 +172,12 @@ export default function GuideManager() {
 
     const toggleEnabled = async (articleId: string, currentlyEnabled: boolean) => {
         try {
-            await updateArticle({
-                id: articleId as Id<'articles'>,
-                is_enabled: !currentlyEnabled,
-            });
+            const { error } = await supabase
+                .from('guide_topics')
+                .update({ is_enabled: !currentlyEnabled })
+                .eq('id', articleId);
+            if (error) throw error;
+            await refetch();
         } catch (error) {
             console.error('Error toggling article:', error);
             alert('Failed to update article status');

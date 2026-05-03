@@ -5,24 +5,24 @@
 @tailwind utilities;
 
 :root {
-  /* Peptijene - Soft Modern Biotech Theme */
-  --theme-bg: #FFFFFF;
-  --theme-text: #2B2B2B;
+  /* Pepstack Davao - Pastel Pink Theme */
+  --theme-bg: #FFF7FA;
+  --theme-text: #5C2B3E;
 
-  /* Primary Palette - Pink */
-  --primary-pink: #F06292;
-  --soft-pink: #F8BBD0;
-  --light-pink: #F48FB1;
-  --pastel-pink: #FCE4EC;
-  --gold-accent: #C8A46B;
+  /* Primary Palette - Pastel Pink */
+  --primary-pink: #FFB6C9;
+  --soft-pink: #FFD6E3;
+  --light-pink: #FFC2D5;
+  --pastel-pink: #FFEAF1;
+  --gold-accent: #E8B5C4;
 
   /* Backgrounds */
-  --cream: #FFFFFF;
-  --soft-bg: #FFF0F3;
-  --warm-white: #FFF0F3;
+  --cream: #FFF7FA;
+  --soft-bg: #FFF0F5;
+  --warm-white: #FFF7FA;
 
   /* Gradient */
-  --brand-gradient: linear-gradient(135deg, #F8BBD0, #F06292);
+  --brand-gradient: linear-gradient(135deg, #FFEAF1, #FFB6C9);
 }
 
 @layer base {
@@ -42,13 +42,13 @@
 
 @layer components {
 
-  /* Peptijene Button Styles */
+  /* Pepstack Davao Button Styles */
   .btn-primary {
     @apply text-white px-8 py-4 rounded-xl font-semibold text-sm tracking-wide transition-all duration-300 shadow-soft hover:shadow-luxury active:transform active:scale-[0.98];
-    background: linear-gradient(135deg, #F8BBD0, #F06292);
+    background: linear-gradient(135deg, #FFD6E3, #FFB6C9);
   }
   .btn-primary:hover {
-    background: linear-gradient(135deg, #F06292, #EC407A);
+    background: linear-gradient(135deg, #FFB6C9, #FF9DB8);
   }
 
   .btn-secondary {
@@ -102,10 +102,36 @@
   }
 }
 
+@keyframes communityBannerMarquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.6s ease-out forwards;
 }
 
 .animate-slideUp {
   animation: slideUp 0.5s ease-out forwards;
+}
+
+.community-banner-track {
+  animation: communityBannerMarquee 18s linear infinite;
+}
+
+.community-banner-link:hover .community-banner-track,
+.community-banner-link:focus-visible .community-banner-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .community-banner-track {
+    animation: none;
+    transform: translateX(0);
+  }
 }

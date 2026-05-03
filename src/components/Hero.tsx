@@ -20,31 +20,31 @@ const Hero: React.FC<HeroProps> = ({ onShopAll }) => {
       {/* Soft pink blob - top left */}
       <div
         className="absolute -top-20 -left-20 w-[400px] h-[400px] rounded-full opacity-30 blur-3xl animate-pulse"
-        style={{ background: '#F8BBD0', animationDuration: '7s' }}
+        style={{ background: '#FFD6E3', animationDuration: '7s' }}
       />
 
       {/* Soft pink blob - bottom right */}
       <div
         className="absolute -bottom-32 -right-20 w-[500px] h-[500px] rounded-full opacity-25 blur-3xl animate-pulse"
-        style={{ background: '#F48FB1', animationDuration: '9s' }}
+        style={{ background: '#FFC2D5', animationDuration: '9s' }}
       />
 
       {/* Pastel pink circle - top right */}
       <div
         className="absolute top-16 right-[10%] w-[250px] h-[250px] rounded-full opacity-15 blur-2xl"
-        style={{ background: 'radial-gradient(circle, #FCE4EC, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, #FFEAF1, transparent 70%)' }}
       />
 
       {/* Primary pink circle - bottom left */}
       <div
         className="absolute bottom-20 left-[8%] w-[200px] h-[200px] rounded-full opacity-20 blur-2xl animate-pulse"
-        style={{ background: 'radial-gradient(circle, #F06292, transparent 70%)', animationDuration: '8s' }}
+        style={{ background: 'radial-gradient(circle, #FFB6C9, transparent 70%)', animationDuration: '8s' }}
       />
 
       {/* Small soft pink accent - mid right */}
       <div
         className="absolute top-1/2 right-[5%] w-[120px] h-[120px] rounded-full opacity-20 blur-xl"
-        style={{ background: '#F8BBD0' }}
+        style={{ background: '#FFD6E3' }}
       />
 
       {/* ── DNA Helix SVG Decorations ── */}
@@ -132,16 +132,18 @@ const Hero: React.FC<HeroProps> = ({ onShopAll }) => {
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}
       `}>
 
-        {/* Brand Name */}
+        {/* Brand Logo */}
         <div className="mb-6">
-          <span className="text-5xl sm:text-6xl md:text-7xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
-            Peptijene
-          </span>
+          <img
+            src="/logo.png?v=3"
+            alt="Pepstack Davao"
+            className="h-48 sm:h-56 md:h-64 w-auto object-contain mx-auto drop-shadow-lg"
+          />
         </div>
 
         {/* Title */}
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-semibold text-charcoal-900 mb-4 leading-tight tracking-tight">
-          Transcending Limits with Peptide Science
+          Premium Peptide Solutions, Delivered with Care
         </h1>
 
         {/* Subtitle */}
@@ -154,7 +156,7 @@ const Hero: React.FC<HeroProps> = ({ onShopAll }) => {
           <button
             onClick={onShopAll}
             className="w-full sm:w-auto px-8 py-4 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group"
-            style={{ background: 'linear-gradient(135deg, #F8BBD0, #F06292)' }}
+            style={{ background: 'linear-gradient(135deg, #FFD6E3, #FFB6C9)' }}
           >
             Explore Products
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2, Save, X, ArrowLeft, GripVertical, Package } from 'lucide-react';
-import { useQuery } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { supabase } from '../lib/supabase';
 import { useCategories, Category } from '../hooks/useCategories';
 
 interface CategoryManagerProps {
@@ -10,8 +9,24 @@ interface CategoryManagerProps {
 
 const CategoryManager: React.FC<CategoryManagerProps> = ({ onBack }) => {
   const { categories, addCategory, updateCategory, deleteCategory, reorderCategories } = useCategories();
-  const productCountsData = useQuery(api.categories.productCounts, {});
-  const categoryProductCounts = (productCountsData ?? {}) as Record<string, number>;
+  const [categoryProductCounts, setCategoryProductCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.from('products').select('category');
+      if (error) {
+        console.error('product counts load error', error);
+        return;
+      }
+      const counts: Record<string, number> = {};
+      for (const p of data ?? []) {
+        const key = (p as any).category as string;
+        if (!key) continue;
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+      setCategoryProductCounts(counts);
+    })();
+  }, [categories]);
   const [currentView, setCurrentView] = useState<'list' | 'add' | 'edit'>('list');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({

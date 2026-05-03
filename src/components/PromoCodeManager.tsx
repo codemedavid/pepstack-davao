@@ -1,18 +1,27 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import React, { useCallback, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { PromoCode } from '../types';
 import { Plus, Search, Tag, Trash2, Edit2, CheckCircle, XCircle } from 'lucide-react';
 
 const PromoCodeManager: React.FC = () => {
-    const data = useQuery(api.promoCodes.list, {});
-    const createMut = useMutation(api.promoCodes.create);
-    const updateMut = useMutation(api.promoCodes.update);
-    const deleteMut = useMutation(api.promoCodes.remove);
+    const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const promoCodes = (data ?? []) as PromoCode[];
-    const loading = data === undefined;
+    const refetch = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('promo_codes')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.error('promo codes load error', error);
+            setPromoCodes([]);
+        } else {
+            setPromoCodes((data ?? []) as PromoCode[]);
+        }
+        setLoading(false);
+    }, []);
+
+    useEffect(() => { refetch(); }, [refetch]);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,10 +51,13 @@ const PromoCodeManager: React.FC = () => {
             };
 
             if (editingCode) {
-                await updateMut({ id: editingCode.id as Id<'promoCodes'>, ...payload });
+                const { error } = await supabase.from('promo_codes').update(payload).eq('id', editingCode.id);
+                if (error) throw error;
             } else {
-                await createMut(payload);
+                const { error } = await supabase.from('promo_codes').insert(payload);
+                if (error) throw error;
             }
+            await refetch();
 
             setIsModalOpen(false);
             setEditingCode(null);
@@ -60,7 +72,9 @@ const PromoCodeManager: React.FC = () => {
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this promo code?')) return;
         try {
-            await deleteMut({ id: id as Id<'promoCodes'> });
+            const { error } = await supabase.from('promo_codes').delete().eq('id', id);
+            if (error) throw error;
+            await refetch();
         } catch (error: any) {
             alert('Error deleting promo code');
         }
@@ -68,7 +82,9 @@ const PromoCodeManager: React.FC = () => {
 
     const toggleActive = async (id: string, currentStatus: boolean) => {
         try {
-            await updateMut({ id: id as Id<'promoCodes'>, active: !currentStatus });
+            const { error } = await supabase.from('promo_codes').update({ active: !currentStatus }).eq('id', id);
+            if (error) throw error;
+            await refetch();
         } catch (error) {
             console.error('Error updating status:', error);
         }

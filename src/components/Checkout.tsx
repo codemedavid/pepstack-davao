@@ -1,17 +1,55 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ShieldCheck, Package, CreditCard, Activity, Copy, Check, MessageCircle, Tag, Upload, Database, Lock, Truck } from 'lucide-react';
-import { useMutation } from 'convex/react';
-import { ConvexHttpClient } from 'convex/browser';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
 import type { CartItem } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useShippingLocations } from '../hooks/useShippingLocations';
 import { useCouriers } from '../hooks/useCouriers';
-import { useImageUpload } from '../hooks/useImageUpload';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
-const httpClient = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+const supabaseHeaders = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json',
+};
+
+async function supabaseRest<T = any>(path: string, init: RequestInit = {}): Promise<T> {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        ...init,
+        headers: { ...supabaseHeaders, ...(init.headers || {}) },
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Supabase error ${res.status}: ${text}`);
+    }
+    if (res.status === 204) return undefined as T;
+    return res.json();
+}
+
+async function uploadPaymentProof(file: File): Promise<string> {
+    const ext = file.name.split('.').pop() || 'png';
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    const uploadRes = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/payment-proofs/${fileName}`,
+        {
+            method: 'POST',
+            headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': file.type || 'application/octet-stream',
+                'x-upsert': 'true',
+            },
+            body: file,
+        },
+    );
+    if (!uploadRes.ok) {
+        const text = await uploadRes.text();
+        throw new Error(`Upload failed ${uploadRes.status}: ${text}`);
+    }
+    return `${SUPABASE_URL}/storage/v1/object/public/payment-proofs/${fileName}`;
+}
 
 interface CheckoutProps {
     cartItems: CartItem[];
@@ -24,8 +62,6 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     const { locations: shippingLocations } = useShippingLocations();
     const { couriers } = useCouriers();
     const { siteSettings } = useSiteSettings();
-    const createOrder = useMutation(api.orders.create);
-    const incrementPromoUsage = useMutation(api.promoCodes.incrementUsage);
 
     const whatsappEnabled = siteSettings?.contact_whatsapp_enabled === 'true';
     const telegramEnabled = siteSettings?.contact_telegram_enabled === 'true';
@@ -60,7 +96,10 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
     // Payment Proof
     const [paymentProof, setPaymentProof] = useState<File | null>(null);
-    const { uploadImage, uploading: isUploadingProof } = useImageUpload('payment-proofs');
+    const [isUploadingProof, setIsUploadingProof] = useState(false);
+
+    // Medical Disclaimer
+    const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
 
     // Promo Code State
     const [promoCode, setPromoCode] = useState('');
@@ -111,7 +150,10 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
         setIsApplyingPromo(true);
 
         try {
-            const promo = await httpClient.query(api.promoCodes.findByCode, { code });
+            const results = await supabaseRest<any[]>(
+                `promo_codes?code=eq.${encodeURIComponent(code)}&limit=1`,
+            );
+            const promo = Array.isArray(results) ? results[0] : null;
 
             if (!promo || !promo.active) {
                 setPromoError('Invalid or inactive promo code');
@@ -211,14 +253,18 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
         try {
             // 1. Upload Payment Proof First
-            let paymentProofUrl = null;
+            let paymentProofUrl: string | null = null;
             if (paymentProof) {
+                setIsUploadingProof(true);
                 try {
-                    paymentProofUrl = await uploadImage(paymentProof);
+                    paymentProofUrl = await uploadPaymentProof(paymentProof);
                 } catch (uploadError: any) {
                     console.error('Failed to upload payment proof:', uploadError);
                     alert(`Failed to upload payment proof: ${uploadError.message}`);
+                    setIsUploadingProof(false);
                     return;
+                } finally {
+                    setIsUploadingProof(false);
                 }
             }
 
@@ -250,32 +296,38 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
             let orderData;
             try {
-                orderData = await createOrder({
-                    customer_name: fullName,
-                    customer_email: email,
-                    customer_phone: phone,
-                    shipping_address: address,
-                    shipping_barangay: barangay,
-                    shipping_city: city,
-                    shipping_state: state,
-                    shipping_zip_code: zipCode,
-                    order_items: orderItems,
-                    total_price: Math.max(0, totalPrice - discountAmount),
-                    shipping_fee: shippingFee,
-                    courier_id: selectedCourierId ? (selectedCourierId as Id<'couriers'>) : null,
-                    shipping_location: shippingLocation,
-                    payment_method_id: paymentMethod?.id ?? null,
-                    payment_method_name: paymentMethod?.name ?? null,
-                    payment_proof_url: paymentProofUrl,
-                    contact_method: contactMethod || undefined,
-                    notes: notes.trim() || null,
-                    order_status: 'new',
-                    payment_status: 'pending',
-                    promo_code_id: appliedPromo?.id ? (appliedPromo.id as Id<'promoCodes'>) : null,
-                    promo_code: appliedPromo?.code ?? null,
-                    discount_applied: discountAmount,
-                    order_number: customOrderNumber,
+                const inserted = await supabaseRest<any[]>('orders', {
+                    method: 'POST',
+                    headers: { Prefer: 'return=representation' },
+                    body: JSON.stringify({
+                        customer_name: fullName,
+                        customer_email: email,
+                        customer_phone: phone,
+                        shipping_address: address,
+                        shipping_barangay: barangay,
+                        shipping_city: city,
+                        shipping_state: state,
+                        shipping_zip_code: zipCode,
+                        order_items: orderItems,
+                        subtotal: totalPrice,
+                        total_price: Math.max(0, totalPrice - discountAmount),
+                        shipping_fee: shippingFee,
+                        courier_id: selectedCourierId || null,
+                        shipping_location: shippingLocation,
+                        payment_method_id: paymentMethod?.id ?? null,
+                        payment_method_name: paymentMethod?.name ?? null,
+                        payment_proof_url: paymentProofUrl,
+                        contact_method: contactMethod || null,
+                        notes: notes.trim() || null,
+                        order_status: 'new',
+                        payment_status: 'pending',
+                        promo_code_id: appliedPromo?.id ?? null,
+                        promo_code: appliedPromo?.code ?? null,
+                        discount_applied: discountAmount,
+                        order_number: customOrderNumber,
+                    }),
                 });
+                orderData = Array.isArray(inserted) ? inserted[0] : inserted;
             } catch (orderError: any) {
                 console.error('❌ Error saving order:', orderError);
                 alert(`Failed to save order: ${orderError?.message ?? 'Unknown error'}\n\nPlease contact support if this issue persists.`);
@@ -284,7 +336,12 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
             if (appliedPromo) {
                 try {
-                    await incrementPromoUsage({ id: appliedPromo.id as Id<'promoCodes'> });
+                    await supabaseRest(`promo_codes?id=eq.${appliedPromo.id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            usage_count: (appliedPromo.usage_count ?? 0) + 1,
+                        }),
+                    });
                 } catch (promoUpdateError) {
                     console.error('Failed to update promo usage count:', promoUpdateError);
                 }
@@ -308,7 +365,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
             });
 
             const orderDetails = `
-✨ Peptijene - NEW ORDER
+✨ Pepstack Davao - NEW ORDER
 
 📅 ORDER DATE & TIME
 ${dateTimeStamp}
@@ -479,7 +536,7 @@ Please confirm this order. Thank you!
                             </button>
 
                             <p className="text-sm text-gray-500">
-                                If Facebook doesn't open automatically, please send the copied order details to our <span className="font-bold">Peptijene Facebook page</span>
+                                If Facebook doesn't open automatically, please send the copied order details to our <span className="font-bold">Pepstack Davao Facebook page</span>
                             </p>
                         </div>
 
@@ -653,9 +710,38 @@ Please confirm this order. Thank you!
                                 />
                             </div>
 
+                            {/* Medical Disclaimer */}
+                            <div className="bg-red-50/50 rounded-lg p-6 border border-red-100">
+                                <h3 className="font-heading text-lg font-bold text-red-700 mb-3">
+                                    Medical Disclaimer
+                                </h3>
+                                <p className="text-sm font-medium text-charcoal-900 mb-3">
+                                    By purchasing this product, I confirm that:
+                                </p>
+                                <ul className="list-disc pl-5 space-y-1.5 text-sm text-charcoal-900 mb-4">
+                                    <li>I do not have Medullary Thyroid Carcinoma (MTC) or Multiple Endocrine Neoplasia syndrome type 2 (MEN2).</li>
+                                    <li>I am not pregnant or breastfeeding.</li>
+                                    <li>I do not have pancreatitis or gallbladder issues.</li>
+                                    <li>I do not have severe stomach problems.</li>
+                                    <li>I have no known allergy to tirzepatide.</li>
+                                    <li>I do not have an unstable thyroid condition.</li>
+                                </ul>
+                                <label className="flex items-start gap-3 p-3 bg-white border border-red-100 rounded cursor-pointer hover:bg-red-50/30 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={disclaimerAccepted}
+                                        onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                                        className="mt-0.5 w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500 shrink-0"
+                                    />
+                                    <span className="text-sm text-charcoal-900">
+                                        I have read and understood the above, and I confirm that all statements are true.
+                                    </span>
+                                </label>
+                            </div>
+
                             <button
                                 onClick={handlePlaceOrder}
-                                disabled={!paymentProof || isUploadingProof}
+                                disabled={!paymentProof || isUploadingProof || !disclaimerAccepted}
                                 className="w-full btn-primary py-4 text-base shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 {isUploadingProof ? 'Uploading Proof...' : 'Complete Order'}

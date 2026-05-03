@@ -1,7 +1,6 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import { supabase } from '../lib/supabase';
 import { ArrowLeft, Calendar, User } from 'lucide-react';
 
 interface Article {
@@ -16,12 +15,29 @@ interface Article {
 export default function ArticleDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const data = useQuery(
-        api.articles.get,
-        id ? { id: id as Id<'articles'> } : 'skip',
-    );
-    const article = (data ?? null) as Article | null;
-    const loading = data === undefined;
+    const [article, setArticle] = useState<Article | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!id) {
+            setLoading(false);
+            return;
+        }
+        (async () => {
+            const { data, error } = await supabase
+                .from('guide_topics')
+                .select('id, title, content, cover_image, author, published_date')
+                .eq('id', id)
+                .maybeSingle();
+            if (error) {
+                console.error('article load error', error);
+                setArticle(null);
+            } else {
+                setArticle((data ?? null) as Article | null);
+            }
+            setLoading(false);
+        })();
+    }, [id]);
 
     if (loading) {
         return (

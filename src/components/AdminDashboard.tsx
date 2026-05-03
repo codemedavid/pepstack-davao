@@ -480,10 +480,12 @@ const AdminDashboard: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 w-full max-w-md border border-gray-200">
           <div className="text-center mb-6">
-            <div className="mx-auto mb-4">
-              <span className="text-3xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
-                Peptijene
-              </span>
+            <div className="mx-auto mb-4 flex justify-center">
+              <img
+                src="/logo.png?v=3"
+                alt="Pepstack Davao"
+                className="h-20 w-auto object-contain"
+              />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Admin Access</h1>
             <p className="text-sm text-gray-400">
@@ -1383,10 +1385,12 @@ const AdminDashboard: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-4">
-                <div className="h-10 flex items-center">
-                  <span className="text-2xl font-heading font-bold tracking-tight bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
-                    Peptijene
-                  </span>
+                <div className="h-12 flex items-center">
+                  <img
+                    src="/logo.png?v=3"
+                    alt="Pepstack Davao"
+                    className="h-12 w-auto object-contain"
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">

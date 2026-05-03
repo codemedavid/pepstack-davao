@@ -1,36 +1,57 @@
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import type { Product, ProductVariation } from '../types';
 
 export function useMenu() {
-  const data = useQuery(api.products.list, { availableOnly: true });
-  const createMut = useMutation(api.products.create);
-  const updateMut = useMutation(api.products.update);
-  const deleteMut = useMutation(api.products.remove);
-  const addVariationMut = useMutation(api.products.addVariation);
-  const updateVariationMut = useMutation(api.products.updateVariation);
-  const deleteVariationMut = useMutation(api.products.removeVariation);
+  const [data, setData] = useState<Product[] | undefined>(undefined);
+
+  const refetch = useCallback(async () => {
+    const { data: rows, error } = await supabase
+      .from('products')
+      .select('*, product_variations(*)')
+      .eq('available', true);
+    if (error) {
+      console.error('useMenu refetch error', error);
+      setData([]);
+      return;
+    }
+    const products = (rows ?? []).map((row: any) => {
+      const { product_variations, ...rest } = row;
+      return {
+        ...rest,
+        variations: (product_variations ?? []) as ProductVariation[],
+      } as Product;
+    });
+    setData(products);
+  }, []);
+
+  useEffect(() => { refetch(); }, [refetch]);
 
   const products = (data ?? []) as Product[];
   const loading = data === undefined;
 
   const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const result = await createMut({
-        name: product.name,
-        description: product.description,
-        category: product.category as Id<'categories'>,
-        base_price: product.base_price,
-        purity_percentage: product.purity_percentage,
-        stock_quantity: product.stock_quantity,
-        available: product.available,
-        featured: product.featured,
-        image_url: product.image_url ?? null,
-        discount_price: product.discount_price ?? null,
-        discount_active: product.discount_active,
-      });
-      return { success: true as const, data: result };
+      const { data: row, error } = await supabase
+        .from('products')
+        .insert({
+          name: product.name,
+          description: product.description,
+          category: product.category,
+          base_price: product.base_price,
+          purity_percentage: product.purity_percentage,
+          stock_quantity: product.stock_quantity,
+          available: product.available,
+          featured: product.featured,
+          image_url: product.image_url ?? null,
+          discount_price: product.discount_price ?? null,
+          discount_active: product.discount_active,
+        })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      await refetch();
+      return { success: true as const, data: row };
     } catch (err) {
       return {
         success: false as const,
@@ -44,7 +65,7 @@ export function useMenu() {
       const patch: Record<string, unknown> = {};
       if (updates.name !== undefined) patch.name = updates.name;
       if (updates.description !== undefined) patch.description = updates.description;
-      if (updates.category !== undefined) patch.category = updates.category as Id<'categories'>;
+      if (updates.category !== undefined) patch.category = updates.category;
       if (updates.base_price !== undefined) patch.base_price = updates.base_price;
       if (updates.discount_price !== undefined) patch.discount_price = updates.discount_price;
       if (updates.discount_active !== undefined) patch.discount_active = updates.discount_active;
@@ -62,8 +83,15 @@ export function useMenu() {
         patch.image_url = v === '' ? null : v;
       }
       if (updates.safety_sheet_url !== undefined) patch.safety_sheet_url = updates.safety_sheet_url;
-      const result = await updateMut({ id: id as Id<'products'>, patch: patch as any });
-      return { success: true as const, data: result };
+      const { data: row, error } = await supabase
+        .from('products')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      await refetch();
+      return { success: true as const, data: row };
     } catch (err) {
       return {
         success: false as const,
@@ -74,7 +102,9 @@ export function useMenu() {
 
   const deleteProduct = async (id: string) => {
     try {
-      await deleteMut({ id: id as Id<'products'> });
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+      await refetch();
       return { success: true as const };
     } catch (err) {
       return {
@@ -86,16 +116,22 @@ export function useMenu() {
 
   const addVariation = async (variation: Omit<ProductVariation, 'id' | 'created_at'>) => {
     try {
-      const result = await addVariationMut({
-        product_id: variation.product_id as Id<'products'>,
-        name: variation.name,
-        quantity_mg: variation.quantity_mg,
-        price: variation.price,
-        stock_quantity: variation.stock_quantity,
-        discount_price: variation.discount_price ?? null,
-        discount_active: variation.discount_active,
-      });
-      return { success: true as const, data: result };
+      const { data: row, error } = await supabase
+        .from('product_variations')
+        .insert({
+          product_id: variation.product_id,
+          name: variation.name,
+          quantity_mg: variation.quantity_mg,
+          price: variation.price,
+          stock_quantity: variation.stock_quantity,
+          discount_price: variation.discount_price ?? null,
+          discount_active: variation.discount_active,
+        })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      await refetch();
+      return { success: true as const, data: row };
     } catch (err) {
       return {
         success: false as const,
@@ -106,15 +142,16 @@ export function useMenu() {
 
   const updateVariation = async (id: string, updates: Partial<ProductVariation>) => {
     try {
-      await updateVariationMut({
-        id: id as Id<'productVariations'>,
-        name: updates.name,
-        quantity_mg: updates.quantity_mg,
-        price: updates.price,
-        stock_quantity: updates.stock_quantity,
-        discount_price: updates.discount_price === undefined ? undefined : updates.discount_price,
-        discount_active: updates.discount_active,
-      });
+      const patch: Record<string, unknown> = {};
+      if (updates.name !== undefined) patch.name = updates.name;
+      if (updates.quantity_mg !== undefined) patch.quantity_mg = updates.quantity_mg;
+      if (updates.price !== undefined) patch.price = updates.price;
+      if (updates.stock_quantity !== undefined) patch.stock_quantity = updates.stock_quantity;
+      if (updates.discount_price !== undefined) patch.discount_price = updates.discount_price;
+      if (updates.discount_active !== undefined) patch.discount_active = updates.discount_active;
+      const { error } = await supabase.from('product_variations').update(patch).eq('id', id);
+      if (error) throw new Error(error.message);
+      await refetch();
       return { success: true as const };
     } catch (err) {
       return {
@@ -126,7 +163,9 @@ export function useMenu() {
 
   const deleteVariation = async (id: string) => {
     try {
-      await deleteVariationMut({ id: id as Id<'productVariations'> });
+      const { error } = await supabase.from('product_variations').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+      await refetch();
       return { success: true as const };
     } catch (err) {
       return {
@@ -141,7 +180,7 @@ export function useMenu() {
     products,
     loading,
     error: null as string | null,
-    refreshProducts: async () => {},
+    refreshProducts: refetch,
     addProduct,
     updateProduct,
     deleteProduct,
