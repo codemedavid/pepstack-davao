@@ -242,9 +242,11 @@ const Cart: React.FC<CartProps> = ({
               <div className="bg-clinical-blue/30 rounded p-4 mb-6 border border-charcoal-100">
                 <p className="text-xs text-charcoal-700 font-medium mb-2">Shipping Information:</p>
                 <ul className="text-xs text-gray-600 space-y-1">
-                  <li className="flex justify-between"><span>Metro Manila</span> <span className="font-medium">₱150</span></li>
-                  <li className="flex justify-between"><span>Provincial</span> <span className="font-medium">₱200</span></li>
+                  <li className="flex justify-between"><span>Mindanao</span> <span className="font-medium">₱80</span></li>
+                  <li className="flex justify-between"><span>Visayas</span> <span className="font-medium">₱100</span></li>
+                  <li className="flex justify-between"><span>Luzon</span> <span className="font-medium">₱120</span></li>
                 </ul>
+                <p className="text-[11px] text-gray-500 mt-2">Ships via J&amp;T Express only.</p>
               </div>
 
               <button

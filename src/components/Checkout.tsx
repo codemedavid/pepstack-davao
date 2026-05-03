@@ -249,6 +249,13 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
             return;
         }
 
+        if (!disclaimerAccepted) {
+            alert('Please read and check the Medical Disclaimer before completing your order.');
+            const disclaimerEl = document.getElementById('medical-disclaimer');
+            if (disclaimerEl) disclaimerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+
         const paymentMethod = paymentMethods.find(pm => pm.id === selectedPaymentMethod);
 
         try {
@@ -711,7 +718,7 @@ Please confirm this order. Thank you!
                             </div>
 
                             {/* Medical Disclaimer */}
-                            <div className="bg-red-50/50 rounded-lg p-6 border border-red-100">
+                            <div id="medical-disclaimer" className={`bg-red-50/50 rounded-lg p-6 border transition-colors ${!disclaimerAccepted ? 'border-red-300 ring-1 ring-red-200' : 'border-red-100'}`}>
                                 <h3 className="font-heading text-lg font-bold text-red-700 mb-3">
                                     Medical Disclaimer
                                 </h3>
@@ -739,9 +746,16 @@ Please confirm this order. Thank you!
                                 </label>
                             </div>
 
+                            {!disclaimerAccepted && (
+                                <p className="text-sm text-red-600 font-medium -mt-2 flex items-center gap-2">
+                                    <span aria-hidden>⚠️</span>
+                                    Please check the Medical Disclaimer above to complete your order.
+                                </p>
+                            )}
+
                             <button
                                 onClick={handlePlaceOrder}
-                                disabled={!paymentProof || isUploadingProof || !disclaimerAccepted}
+                                disabled={!paymentProof || isUploadingProof}
                                 className="w-full btn-primary py-4 text-base shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 {isUploadingProof ? 'Uploading Proof...' : 'Complete Order'}
