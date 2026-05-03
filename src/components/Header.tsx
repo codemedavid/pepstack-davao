@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Menu, X, FlaskConical, Truck, HelpCircle, FileText, BookOpen, MessageCircle, ExternalLink } from 'lucide-react';
+import { ShoppingCart, Menu, X, FlaskConical, Truck, HelpCircle, FileText, BookOpen, MessageCircle, ExternalLink, Calculator } from 'lucide-react';
 import { useCOAPageSetting } from '../hooks/useCOAPageSetting';
 
 interface HeaderProps {
@@ -71,6 +71,13 @@ const Header: React.FC<HeaderProps> = ({ cartItemsCount, onCartClick, onMenuClic
                 >
                   <BookOpen className="w-4 h-4" />
                   Protocols
+                </a>
+                <a
+                  href="/calculator"
+                  className="text-sm font-medium text-charcoal-600 hover:text-brand-600 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Calculator className="w-4 h-4" />
+                  Calculator
                 </a>
               </nav>
 
@@ -216,6 +223,16 @@ const Header: React.FC<HeaderProps> = ({ cartItemsCount, onCartClick, onMenuClic
                     <BookOpen className="w-[18px] h-[18px]" />
                   </div>
                   Protocols
+                </a>
+
+                <a
+                  href="/calculator"
+                  className="flex items-center gap-3 p-4 rounded-xl text-left font-medium text-charcoal-800 hover:bg-brand-50 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-brand-50 text-brand-600">
+                    <Calculator className="w-[18px] h-[18px]" />
+                  </div>
+                  Peptide Calculator
                 </a>
               </div>
             </nav>
