@@ -235,7 +235,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
     const handlePlaceOrder = async () => {
         if (!contactMethod) {
-            alert('Please select your preferred contact method (Facebook or Viber).');
+            alert('Please select your preferred contact method.');
             return;
         }
 
@@ -423,7 +423,7 @@ ${paymentMethod?.name || 'N/A'}
 ${paymentProofUrl ? 'Screenshot attached to order.' : 'Pending'}
 
 📱 CONTACT METHOD
-Facebook Messenger
+${contactMethod === 'whatsapp' ? 'WhatsApp' : contactMethod === 'telegram' ? 'Telegram' : 'N/A'}
 
 📋 ORDER NUMBER: ${customOrderNumber}
 
@@ -443,9 +443,10 @@ Please confirm this order. Thank you!
             // Show confirmation
             setStep('confirmation');
 
-            // Auto-open Facebook Messenger
+            // Auto-open the customer's selected contact channel
             setTimeout(() => {
-                window.open('https://www.facebook.com/share/1CJZ5FTx2N/?mibextid=wwXIfr', '_blank');
+                const url = buildContactUrl(orderDetails);
+                if (url) window.open(url, '_blank');
             }, 1500);
         } catch (error) {
             console.error('❌ Error placing order:', error);
@@ -465,8 +466,28 @@ Please confirm this order. Thank you!
         }
     };
 
+    const buildContactUrl = (message: string): string | null => {
+        const encoded = encodeURIComponent(message);
+        if (contactMethod === 'whatsapp' && whatsappNumbers.length > 0) {
+            const raw = whatsappNumbers[0].replace(/[^0-9+]/g, '');
+            // Convert local PH numbers (09xxxxxxxxx) to international (639xxxxxxxxx)
+            const intl = raw.startsWith('0') ? '63' + raw.slice(1) : raw.replace(/^\+/, '');
+            return `https://wa.me/${intl}?text=${encoded}`;
+        }
+        if (contactMethod === 'telegram' && telegramLinks.length > 0) {
+            const link = telegramLinks[0];
+            return link.startsWith('http') ? link : `https://t.me/${link.replace(/^@/, '')}`;
+        }
+        return null;
+    };
+
     const handleOpenContact = () => {
-        window.open('https://www.facebook.com/share/1CJZ5FTx2N/?mibextid=wwXIfr', '_blank');
+        const url = buildContactUrl(orderMessage);
+        if (url) {
+            window.open(url, '_blank');
+        } else {
+            alert('No contact method is configured. Please contact support.');
+        }
     };
 
     if (step === 'confirmation') {
@@ -481,7 +502,7 @@ Please confirm this order. Thank you!
                             Order Confirmed
                         </h1>
                         <p className="text-gray-600 mb-4 text-base md:text-lg leading-relaxed">
-                            Your order details have been copied. Send them to us on Facebook Messenger to finalize your order!
+                            Your order details have been copied. Send them to us on {contactMethod === 'whatsapp' ? 'WhatsApp' : contactMethod === 'telegram' ? 'Telegram' : 'your selected contact method'} to finalize your order!
                         </p>
 
                         {/* Order ID Display */}
@@ -539,11 +560,14 @@ Please confirm this order. Thank you!
                                 className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 shadow-lg"
                             >
                                 <MessageCircle className="w-5 h-5" />
-                                Open Facebook Messenger
+                                Open {contactMethod === 'whatsapp' ? 'WhatsApp' : contactMethod === 'telegram' ? 'Telegram' : 'Contact'}
                             </button>
 
                             <p className="text-sm text-gray-500">
-                                If Facebook doesn't open automatically, please send the copied order details to our <span className="font-bold">Pepstack Davao Facebook page</span>
+                                If it doesn't open automatically, please send the copied order details to our <span className="font-bold">Pepstack Davao {contactMethod === 'whatsapp' ? 'WhatsApp' : contactMethod === 'telegram' ? 'Telegram' : 'contact'}</span>
+                                {contactMethod === 'whatsapp' && whatsappNumbers[0] && (
+                                    <span className="font-bold"> ({whatsappNumbers[0]})</span>
+                                )}.
                             </p>
                         </div>
 
