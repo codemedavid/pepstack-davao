@@ -30,6 +30,21 @@
     @apply font-sans text-charcoal-800 bg-white antialiased leading-relaxed;
   }
 
+  button:not(:disabled),
+  a[role="button"] {
+    transition: filter 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  button:not(:disabled):hover,
+  a[role="button"]:hover {
+    filter: brightness(0.88);
+  }
+
+  button:not(:disabled):active,
+  a[role="button"]:active {
+    filter: brightness(0.8);
+  }
+
   h1,
   h2,
   h3,
@@ -48,11 +63,11 @@
     background: linear-gradient(135deg, #FFD6E3, #FFB6C9);
   }
   .btn-primary:hover {
-    background: linear-gradient(135deg, #FFB6C9, #FF9DB8);
+    background: linear-gradient(135deg, #F56991, #D9527B);
   }
 
   .btn-secondary {
-    @apply bg-transparent text-charcoal-800 border-2 border-charcoal-200 px-8 py-4 rounded-xl font-semibold text-sm transition-all duration-300 hover:bg-charcoal-50 hover:border-charcoal-800 active:transform active:scale-[0.98];
+    @apply bg-transparent text-charcoal-800 border-2 border-charcoal-200 px-8 py-4 rounded-xl font-semibold text-sm transition-all duration-300 hover:bg-charcoal-200 hover:border-charcoal-800 active:transform active:scale-[0.98];
   }
 
   /* Luxury Card Styles */
