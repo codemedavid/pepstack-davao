@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, Package, CheckCircle, XCircle, Clock, Truck, AlertCircle, Search, RefreshCw, Eye, MessageCircle, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Package, CheckCircle, XCircle, Clock, Truck, AlertCircle, Search, RefreshCw, Eye, MessageCircle, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useMenu } from '../hooks/useMenu';
 import { useCouriers } from '../hooks/useCouriers';
 import { supabase } from '../lib/supabase';
@@ -205,6 +205,27 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
     }
   };
 
+  const handleDeleteOrder = async (order: Order) => {
+    const label = `#${order.order_number || order.id.slice(0, 8).toUpperCase()}`;
+    if (!confirm(`Permanently delete order ${label}? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      setIsProcessing(true);
+      const { error } = await supabase.from('orders').delete().eq('id', order.id);
+      if (error) throw error;
+      await refetchOrders();
+      if (selectedOrder?.id === order.id) {
+        setSelectedOrder(null);
+      }
+    } catch (error: any) {
+      console.error('Error deleting order:', error);
+      alert(`Failed to delete order: ${error?.message ?? 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleSaveTracking = async (orderId: string, trackingNumber: string, shippingProvider: string, shippingNote: string) => {
     try {
       setIsProcessing(true);
@@ -314,6 +335,7 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
         onConfirm={() => handleConfirmOrder(selectedOrder)}
         onUpdateStatus={handleUpdateOrderStatus}
         onSaveTracking={handleSaveTracking}
+        onDelete={() => handleDeleteOrder(selectedOrder)}
         isProcessing={isProcessing}
       />
     );
@@ -440,6 +462,7 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
                 key={order.id}
                 order={order}
                 onView={() => setSelectedOrder(order)}
+                onDelete={() => handleDeleteOrder(order)}
                 getStatusColor={getStatusColor}
                 getStatusIcon={getStatusIcon}
               />
@@ -455,11 +478,12 @@ const OrdersManager: React.FC<OrdersManagerProps> = ({ onBack }) => {
 interface OrderCardProps {
   order: Order;
   onView: () => void;
+  onDelete: () => void;
   getStatusColor: (status: string) => string;
   getStatusIcon: (status: string) => React.ReactNode;
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({ order, onView, getStatusColor, getStatusIcon }) => {
+const OrderCard: React.FC<OrderCardProps> = ({ order, onView, onDelete, getStatusColor, getStatusIcon }) => {
   const totalItems = order.order_items.reduce((sum, item) => sum + item.quantity, 0);
   const finalTotal = order.total_price + (order.shipping_fee || 0);
 
@@ -522,6 +546,17 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onView, getStatusColor, ge
             <Eye className="w-3 h-3 md:w-4 md:h-4" />
             View Details
           </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="px-3 md:px-4 py-1.5 md:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2 shadow-md hover:shadow-lg"
+            title="Delete order"
+          >
+            <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+            Delete
+          </button>
         </div>
       </div>
     </div>
@@ -535,6 +570,7 @@ interface OrderDetailsViewProps {
   onConfirm: () => void;
   onUpdateStatus: (orderId: string, status: string) => void;
   onSaveTracking: (orderId: string, trackingNumber: string, shippingProvider: string, shippingNote: string) => void;
+  onDelete: () => void;
   isProcessing: boolean;
 }
 
@@ -544,6 +580,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({
   onConfirm,
   onUpdateStatus,
   onSaveTracking,
+  onDelete,
   isProcessing
 }) => {
   const { couriers } = useCouriers();
@@ -583,6 +620,15 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({
                 Order #{order.order_number || order.id.slice(0, 8).toUpperCase()}
               </h1>
             </div>
+            <button
+              onClick={onDelete}
+              disabled={isProcessing}
+              className="bg-red-600 hover:bg-red-700 text-white px-2 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl font-medium text-xs md:text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-1 md:gap-2 disabled:opacity-50"
+              title="Delete order"
+            >
+              <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Delete Order</span>
+            </button>
           </div>
         </div>
       </div>
